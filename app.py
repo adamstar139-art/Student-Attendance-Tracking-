@@ -746,6 +746,37 @@ st.write("")
 # 7. واجهة المعلم (رصد حضور الطلاب)
 # =========================================================
 if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
+
+    # =========================================================
+    # 🇸🇦 بنر اليوم الوطني السعودي - صفحة المعلم
+    # =========================================================
+    st.markdown("""
+    <div style="
+        background: linear-gradient(135deg, #006C35 0%, #004D25 100%);
+        border: 2px solid #D4AF37;
+        border-radius: 16px;
+        padding: 22px 25px;
+        margin-bottom: 25px;
+        color: white;
+        text-align: center;
+        box-shadow: 0 6px 18px rgba(0, 108, 53, 0.25);
+        direction: rtl;
+    ">
+        <div style="font-size: 42px; margin-bottom: 6px; line-height: 1;">🇸🇦 🌴⚔️ 🇸🇦</div>
+        <h2 style="color: #FFFFFF; font-weight: 800; margin: 5px 0 8px 0; font-size: 26px; text-shadow: 0 2px 4px rgba(0,0,0,0.3); font-family: 'Cairo', sans-serif;">
+            💚 دام عزك يا وطن 🇸🇦
+        </h2>
+        <div style="background: rgba(255,255,255,0.12); padding: 8px 16px; border-radius: 30px; display: inline-block; margin-bottom: 8px; border: 1px solid rgba(212,175,55,0.4);">
+            <span style="color: #F3E5AB; font-size: 16px; font-weight: 700;">✨ بمناسبة اليوم الوطني السعودي المجيد ✨</span>
+        </div>
+        <p style="color: #E8F5E9; font-size: 14px; font-weight: 600; margin: 4px 0 0 0; opacity: 0.95;">
+            نعتز بفخرنا ونمضي بقوة نحو المستقبل.. نحلم ونحقق 🇸🇦
+            <br>
+            <small style="color: #D4AF37; font-weight: 700;">🏫 مدرسة متوسطة الثغر النموذجية</small>
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
     st.markdown("### 📋 رصد حضور وغياب الطلاب")
     students_db = get_active_students_db()
 
