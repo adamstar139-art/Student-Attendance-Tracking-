@@ -4,9 +4,9 @@ from datetime import date, datetime, timedelta
 import io
 import copy
 
-### =========================================================
-### 0. ربط قاعدة البيانات السحابية الدائمة (Supabase Cloud)
-### =========================================================
+# =========================================================
+# 0. ربط قاعدة البيانات السحابية الدائمة (Supabase Cloud)
+# =========================================================
 try:
     from supabase import create_client, Client
     _SUPABASE_LIB = True
@@ -15,18 +15,30 @@ except Exception:
 
 @st.cache_resource(show_spinner=False)
 def get_supabase():
-    """إنشاء اتصال واحد مع Supabase وإعادة استخدامه للسرعة"""
+    """إنشاء اتصال واحد مع Supabase وإعادة استخدامه للسرعة مع مرونة فائقة في قراءة Secrets"""
     if not _SUPABASE_LIB:
         return None
-    try:
-        url = st.secrets["supabase"]["url"]
-        key = st.secrets["supabase"]["key"]
-    except Exception:
-        return None
+    url, key = None, None
+    # 1. القراءة من قسم [supabase]
+    if "supabase" in st.secrets:
+        sec = st.secrets["supabase"]
+        if hasattr(sec, "get"):
+            url = sec.get("url") or sec.get("URL") or sec.get("SUPABASE_URL")
+            key = sec.get("key") or sec.get("KEY") or sec.get("SUPABASE_KEY") or sec.get("anon_key")
+    # 2. القراءة المباشرة من المستوى الرئيسي في Secrets
+    if not url and hasattr(st.secrets, "get"):
+        url = st.secrets.get("url") or st.secrets.get("SUPABASE_URL")
+    if not key and hasattr(st.secrets, "get"):
+        key = st.secrets.get("key") or st.secrets.get("SUPABASE_KEY") or st.secrets.get("anon_key")
+
     if not url or not key:
         return None
     try:
-        return create_client(url, key)
+        clean_url = str(url).strip().strip('"').strip("'")
+        clean_key = str(key).strip().strip('"').strip("'")
+        if not clean_url or not clean_key:
+            return None
+        return create_client(clean_url, clean_key)
     except Exception:
         return None
 
@@ -36,7 +48,7 @@ def supabase_ready():
 # --- دوال قراءة وحفظ حضور الطلاب ---
 STU_COLS = ["التاريخ", "اسم المعلم", "الصف", "الفصل", "الحصة", "رقم الطالب", "اسم الطالب", "الحالة"]
 
-@st.cache_data(ttl=10, show_spinner=False)
+@st.cache_data(ttl=5, show_spinner=False)
 def _fetch_student_rows():
     sb = get_supabase()
     if sb is None:
@@ -73,7 +85,7 @@ def load_student_attendance_db():
 def save_student_attendance_to_db(records):
     sb = get_supabase()
     if sb is None:
-        st.error("لم يتم الاتصال بـ Supabase. يرجى التأكد من إضافة url و key في Secrets.")
+        st.error("❌ لم يتم الاتصال بـ Supabase. يرجى التأكد من إضافة url و key في Secrets.")
         return
     try:
         for r in records:
@@ -83,13 +95,13 @@ def save_student_attendance_to_db(records):
 
         payload = [{
             "date": str(r['التاريخ']),
-            "teacher_name": r['اسم المعلم'],
-            "grade": r['الصف'],
-            "section": r['الفصل'],
-            "period": r['الحصة'],
+            "teacher_name": str(r['اسم المعلم']),
+            "grade": str(r['الصف']),
+            "section": str(r['الفصل']),
+            "period": str(r['الحصة']),
             "student_id": str(r['رقم الطالب']),
-            "student_name": r['اسم الطالب'],
-            "status": r['الحالة'],
+            "student_name": str(r['اسم الطالب']),
+            "status": str(r['الحالة']),
         } for r in records]
 
         if payload:
@@ -118,7 +130,7 @@ def delete_student_attendance_from_db(scope):
         st.cache_data.clear()
 
 # --- دوال سجلات المعلمين ---
-@st.cache_data(ttl=10, show_spinner=False)
+@st.cache_data(ttl=5, show_spinner=False)
 def _fetch_teacher_rows():
     sb = get_supabase()
     if sb is None:
@@ -154,11 +166,11 @@ def save_teacher_logs_to_db(records, target_date_str=None):
             sb.table("thaghr_teacher_daily_logs").delete().eq("date", target_date_str).execute()
         payload = [{
             "date": str(r['التاريخ']),
-            "hijri_date": r.get('التاريخ_الهجري', ''),
-            "teacher_name": r['اسم المعلم'],
-            "status": r['الحالة'],
+            "hijri_date": str(r.get('التاريخ_الهجري', '')),
+            "teacher_name": str(r['اسم المعلم']),
+            "status": str(r['الحالة']),
             "sessions_count": int(r.get('الحصص المرصودة', 0) or 0),
-            "notes": r.get('ملاحظات', '-'),
+            "notes": str(r.get('ملاحظات', '-')),
         } for r in records]
         if payload:
             sb.table("thaghr_teacher_daily_logs").insert(payload).execute()
@@ -205,7 +217,7 @@ def add_student_db(student_id, student_name, grade, section):
 def move_student_db(student_id, student_name, new_grade, new_section):
     add_student_db(student_id, student_name, new_grade, new_section)
 
-@st.cache_data(ttl=10, show_spinner=False)
+@st.cache_data(ttl=5, show_spinner=False)
 def _fetch_roster_rows():
     sb = get_supabase()
     if sb is None:
@@ -234,7 +246,7 @@ def get_active_students_db():
     return st_db
 
 # =========================================================
-# قوائم الطلاب
+# قوائم الطلاب المحفورة
 # =========================================================
 STUDENTS_DB = {
     "الأول المتوسط": {
@@ -446,7 +458,7 @@ TEACHER_PASSWORDS = {
 }
 
 # =========================================================
-# 1. تهيئة صفحة Streamlit والتنسيق
+# 1. تهيئة صفحة Streamlit والتنسيق (RTL & CSS احترافي)
 # =========================================================
 st.set_page_config(
     page_title="نظام تحضير متوسطة الثغر النموذجية",
@@ -455,15 +467,135 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-if not supabase_ready():
-    with st.expander("🔌 خطوة مطلوبة لمرة واحدة: ربط قاعدة بيانات Supabase (اضغط للتفاصيل)", expanded=True):
-        st.info(
-            "البرنامج يعمل، لكن **الحفظ الدائم لم يُفعّل بعد**. لتفعيله لمرة واحدة:\n\n"
-            "1️⃣ أنشئ مشروعاً مجانياً في supabase.com\n\n"
-            "2️⃣ افتح SQL Editor والصق محتوى ملف SQL للتهيئة ثم اضغط Run\n\n"
-            "3️⃣ من Project Settings > API انسخ (Project URL) و (anon public key)\n\n"
-            "4️⃣ أضفهما في إعدادات التطبيق (Secrets) تحت [supabase] باسم url و key ثم أعد تحميل الصفحة."
-        )
+# تطبيق اتجاه RTL وتنسيقات CSS احترافية
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+
+/* ضبط خط القاهرة والاتجاه من اليمين لليسار لكافة العناصر */
+html, body, [class*="css"], .stApp {
+    font-family: 'Cairo', sans-serif !important;
+    direction: rtl !important;
+    text-align: right !important;
+    background-color: #F8FAFC !important;
+}
+
+/* تنسيق الشريط الجانبي */
+[data-testid="stSidebar"] {
+    direction: rtl !important;
+    text-align: right !important;
+    background-color: #0F172A !important;
+}
+
+[data-testid="stSidebar"] * {
+    direction: rtl !important;
+    text-align: right !important;
+    color: #F8FAFC !important;
+}
+
+/* تنسيق الحاوية الرئيسية */
+.main .block-container {
+    direction: rtl !important;
+    text-align: right !important;
+    padding-top: 1.5rem !important;
+    padding-bottom: 2rem !important;
+}
+
+/* بطاقات الإحصائيات الفاخرة */
+.metric-card-box {
+    background: linear-gradient(135deg, #FFFFFF 0%, #EFF6FF 100%);
+    border-radius: 14px;
+    padding: 16px;
+    text-align: center;
+    border: 1px solid #BFDBFE;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.05);
+}
+
+.metric-card-val {
+    font-size: 30px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.metric-card-lbl {
+    font-size: 13px;
+    font-weight: 700;
+    color: #475569;
+    margin-top: 4px;
+}
+
+/* بطاقة الطالب في كشف الرصد */
+.student-row-card {
+    background: #FFFFFF;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    border-right: 5px solid #2563EB;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* الأزرار المدورة والأنيميشن */
+.stButton > button {
+    border-radius: 8px !important;
+    font-weight: 700 !important;
+    font-family: 'Cairo', sans-serif !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+.stButton > button:hover {
+    transform: translateY(-1px) !important;
+}
+
+/* محاذاة أزرار الاختيار الراديو */
+div[role="radiogroup"] {
+    direction: rtl !important;
+    justify-content: flex-start !important;
+}
+
+/* ضبط القوائم والحقول */
+.stSelectbox, .stTextInput, .stDateInput, .stNumberInput {
+    direction: rtl !important;
+    text-align: right !important;
+}
+
+.stDataFrame {
+    direction: rtl !important;
+}
+
+/* شارات حالة الاتصال */
+.status-badge-ok {
+    background-color: #10B981;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: bold;
+    display: inline-block;
+}
+
+.status-badge-err {
+    background-color: #EF4444;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: bold;
+    display: inline-block;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# شريط حالة الاتصال بالشريط الجانبي
+if supabase_ready():
+    st.sidebar.markdown("<div style='text-align:center; margin-bottom:15px;'><span class='status-badge-ok'>🟢 متصل بسحابة Supabase</span></div>", unsafe_allow_html=True)
+else:
+    st.sidebar.markdown("<div style='text-align:center; margin-bottom:15px;'><span class='status-badge-err'>🔴 غير متصل بـ Supabase</span></div>", unsafe_allow_html=True)
+    with st.expander("🔌 طريقة تفعيل الربط عبر Secrets (اضغط هنا)", expanded=True):
+        st.warning("يرجى نسخ الكود التالي ووضعه في إعدادات التطبيق (Streamlit Cloud > App settings > Secrets):")
+        st.code("""[supabase]
+url = "https://yathpzoxjfpgahkbjzgz.supabase.co"
+key = "sb_publishable_4Igw4yxTyqcZzSvXei6TEg_cuxhLKcE"
+""", language="toml")
 
 if 'dev_unlocked' not in st.session_state:
     st.session_state['dev_unlocked'] = False
@@ -532,7 +664,6 @@ body {{ font-family: 'Cairo', sans-serif; text-align: right; padding: 25px; back
 .header {{ text-align: center; border-bottom: 3px solid #0F2552; padding-bottom: 12px; margin-bottom: 20px; }}
 h2 {{ color:#0F2552; margin:5px; font-weight:800; font-size:22px; }}
 h4 {{ color:#4B5563; margin:5px; font-weight:700; font-size:16px; }}
-.info {{ background:#F1F5F9; padding:12px; border-radius:8px; margin-bottom:20px; text-align:center; font-weight:700; border:1px solid #CBD5E1; }}
 table {{ width:100%; border-collapse: collapse; margin-top:10px; }}
 th, td {{ border:1px solid #CBD5E1; padding:10px; text-align:center; font-size:13px; }}
 th {{ background:#0F2552; color:white; font-weight:700; }}
@@ -603,11 +734,10 @@ tr:nth-child(even) {{ background:#F8FAFC; }}
 # اختيار لوحة التحكم
 # =========================================================
 st.sidebar.title("📌 نظام المتابعة")
-st.markdown("<div style='background:#EFF6FF; border-right:5px solid #2563EB; border-radius:10px; padding:10px 14px; margin-bottom:12px; font-weight:700; color:#1E3A8A;'>👇 اختر لوحة التحكم المطلوبة:</div>", unsafe_allow_html=True)
-role = st.radio(
+st.sidebar.markdown("<div style='background:#1E293B; border-right:4px solid #3B82F6; border-radius:8px; padding:10px; margin-bottom:12px; font-weight:700; color:#F8FAFC;'>👇 اختر لوحة التحكم:</div>", unsafe_allow_html=True)
+role = st.sidebar.radio(
     "اختر لوحة التحكم:",
     ["👨‍🏫 حساب المعلم (رصد الحضور)", "👔 حساب الوكيل والمدير (المتابعة والتصدير)"],
-    horizontal=True,
     label_visibility="collapsed"
 )
 st.write("")
@@ -643,7 +773,7 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
         students_list = students_db[grade][section]
 
         st.markdown(f"""
-        <div style="background:#EFF6FF; border-right:4px solid #2563EB; padding:12px; border-radius:8px; margin-top:10px; margin-bottom:20px;">
+        <div style="background:#EFF6FF; border-right:5px solid #2563EB; padding:14px; border-radius:10px; margin-top:10px; margin-bottom:20px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
             <span style="font-weight:700; color:#1E3A8A; font-size:15px;">
                 👨‍🏫 <b>المعلم:</b> {teacher_name} &nbsp;|&nbsp; 🏫 <b>الفصل:</b> {grade} - {section} &nbsp;|&nbsp; ⏰ <b>الحصة:</b> {period} &nbsp;|&nbsp; 📅 <b>التاريخ:</b> {att_date}
             </span>
@@ -655,13 +785,19 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
         for idx, student in enumerate(students_list, 1):
             col_info, col_radio = st.columns([4, 3])
             with col_info:
-                st.markdown(f"**{idx}. {student['name']}** <small style='color:#64748B;'>(هوية: {student['id']})</small>", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div class="student-row-card">
+                    <b>{idx}. {student['name']}</b><br>
+                    <small style="color:#64748B;">رقم الهوية: {student['id']}</small>
+                </div>
+                """, unsafe_allow_html=True)
             with col_radio:
                 status = st.radio(
-                    "حالة الحضور:",
+                    f"حالة {student['name']}:",
                     ["حاضر", "غائب", "خارج الفصل", "متأخر"],
                     key=f"{teacher_name}_{grade}_{section}_{period}_{student['id']}",
-                    horizontal=True
+                    horizontal=True,
+                    label_visibility="collapsed"
                 )
                 attendance_records[student['id']] = {"name": student['name'], "status": status}
 
@@ -724,13 +860,13 @@ else:
         tot_late = len(df_metric[df_metric['الحالة'] == 'متأخر']) if not df_metric.empty else 0
 
         _day_lbl = "إجمالي السجل" if metric_day.startswith("📆") else f"يوم {metric_day}"
-        st.markdown(f"<div style='text-align:center; color:#0F2552; font-weight:700; margin-bottom:8px;'>📊 الإحصائيات المعروضة: {_day_lbl}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align:center; color:#0F2552; font-weight:700; margin-bottom:12px;'>📊 الإحصائيات المعروضة: {_day_lbl}</div>", unsafe_allow_html=True)
 
         m1, m2, m3, m4 = st.columns(4)
-        m1.metric("إجمالي عمليات الرصد", tot_records)
-        m2.metric("حالات الغياب", tot_absent)
-        m3.metric("خارج الفصل", tot_out)
-        m4.metric("حالات التأخر", tot_late)
+        m1.markdown(f'<div class="metric-card-box"><div class="metric-card-val" style="color:#0F2552;">{tot_records}</div><div class="metric-card-lbl">إجمالي الرصد</div></div>', unsafe_allow_html=True)
+        m2.markdown(f'<div class="metric-card-box"><div class="metric-card-val" style="color:#DC2626;">{tot_absent}</div><div class="metric-card-lbl">حالات الغياب</div></div>', unsafe_allow_html=True)
+        m3.markdown(f'<div class="metric-card-box"><div class="metric-card-val" style="color:#D97706;">{tot_out}</div><div class="metric-card-lbl">خارج الفصل</div></div>', unsafe_allow_html=True)
+        m4.markdown(f'<div class="metric-card-box"><div class="metric-card-val" style="color:#CA8A04;">{tot_late}</div><div class="metric-card-lbl">حالات التأخر</div></div>', unsafe_allow_html=True)
 
         st.write("---")
         col_del1, col_del2 = st.columns(2)
