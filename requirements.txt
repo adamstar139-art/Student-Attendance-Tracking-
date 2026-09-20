@@ -1,6 +1,4 @@
 streamlit
 pandas
-plotly
+supabase
 openpyxl
-psycopg2-binary
-
