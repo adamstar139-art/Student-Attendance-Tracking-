@@ -818,7 +818,7 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
             with col_info:
                 st.markdown(f"""
                 <div class="student-row-card">
-                    <b>{idx}. {student['name']}</b><br>
+                    <b style="color: #000000 !important;">{idx}. {student['name']}</b><br>
                     <small style="color:#64748B;">رقم الهوية: {student['id']}</small>
                 </div>
                 """, unsafe_allow_html=True)
