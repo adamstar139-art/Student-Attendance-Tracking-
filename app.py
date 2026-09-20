@@ -467,17 +467,23 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# تطبيق اتجاه RTL وتنسيقات CSS احترافية
+# تطبيق اتجاه RTL وتنسيقات CSS احترافية ومعدلة للجوال
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
 
-/* ضبط خط القاهرة والاتجاه من اليمين لليسار لكافة العناصر */
-html, body, [class*="css"], .stApp {
+/* ضبط خط القاهرة والاتجاه وتثبيت اللون الأسود المباشر */
+html, body, .stApp {
     font-family: 'Cairo', sans-serif !important;
     direction: rtl !important;
     text-align: right !important;
     background-color: #F8FAFC !important;
+    color: #000000 !important; /* 👈 جعل لون النص العام أسود واضحة */
+}
+
+/* حماية خط الأيقونات لمنع تداخل النصوص والأسهم على الجوال */
+[data-testid="stIcon"], [class*="material-symbols"], [class*="Material"], [class*="icon"], i {
+    font-family: 'Material Symbols Outlined', 'Material Icons' !important;
 }
 
 /* تنسيق الشريط الجانبي */
@@ -524,14 +530,25 @@ html, body, [class*="css"], .stApp {
     margin-top: 4px;
 }
 
-/* بطاقة الطالب في كشف الرصد */
-.student-row-card {
-    background: #FFFFFF;
+/* بطاقة الطالب في كشف الرصد - خلفية بيضاء ثابتة واسم أسود داكن عريض */
+.student-row-card, .student-card {
+    background-color: #FFFFFF !important; /* خلفية بيضاء ناصعة للبطاقة */
     border-radius: 10px;
     padding: 12px 16px;
     margin-bottom: 10px;
     border-right: 5px solid #2563EB;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.student-row-card b, .student-card b {
+    color: #000000 !important; /* 👈 لون اسم الطالب أسود عريض وواضح جداً على الجوال */
+    font-size: 16px !important;
+    font-weight: 800 !important;
+}
+
+.student-row-card small, .student-card small {
+    color: #475569 !important; /* 👈 لون رقم الهوية رمادي داكن واضح */
+    font-weight: 600 !important;
 }
 
 /* الأزرار المدورة والأنيميشن */
@@ -584,6 +601,7 @@ div[role="radiogroup"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 # شريط حالة الاتصال بالشريط الجانبي
 if supabase_ready():
