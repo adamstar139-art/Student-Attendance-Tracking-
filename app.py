@@ -47,7 +47,7 @@ def _fetch_student_rows():
     if sb is None:
         return []
     try:
-        res = sb.table("student_attendance").select(
+        res = sb.table("thaghr_student_attendance").select(
             "date, teacher_name, grade, section, period, student_id, student_name, status"
         ).order("id", desc=True).limit(50000).execute()
         return res.data or []
@@ -85,7 +85,7 @@ def save_student_attendance_to_db(records):
     try:
         for r in records:
             # حذف السجل السابق لنفس اليوم والطالب والحصة
-            sb.table("student_attendance").delete().eq(
+            sb.table("thaghr_student_attendance").delete().eq(
                 "date", str(r['التاريخ'])
             ).eq("student_id", r['رقم الطالب']).eq("period", r['الحصة']).execute()
         payload = [{
@@ -95,7 +95,7 @@ def save_student_attendance_to_db(records):
             "status": r['الحالة'],
         } for r in records]
         if payload:
-            sb.table("student_attendance").insert(payload).execute()
+            sb.table("thaghr_student_attendance").insert(payload).execute()
     except Exception:
         pass
     finally:
@@ -109,12 +109,12 @@ def delete_student_attendance_from_db(scope):
     try:
         today_str = str(date.today())
         if "يومي" in scope:
-            sb.table("student_attendance").delete().eq("date", today_str).execute()
+            sb.table("thaghr_student_attendance").delete().eq("date", today_str).execute()
         elif "أسبوعي" in scope:
             seven = str(date.today() - timedelta(days=7))
-            sb.table("student_attendance").delete().gte("date", seven).execute()
+            sb.table("thaghr_student_attendance").delete().gte("date", seven).execute()
         else:
-            sb.table("student_attendance").delete().neq("student_id", "__none__").execute()
+            sb.table("thaghr_student_attendance").delete().neq("student_id", "__none__").execute()
     except Exception:
         pass
     finally:
@@ -128,7 +128,7 @@ def _fetch_teacher_rows():
     if sb is None:
         return []
     try:
-        res = sb.table("teacher_daily_logs").select(
+        res = sb.table("thaghr_teacher_daily_logs").select(
             "date, hijri_date, teacher_name, status, sessions_count, notes"
         ).order("id", desc=True).limit(50000).execute()
         return res.data or []
@@ -161,7 +161,7 @@ def save_teacher_logs_to_db(records, target_date_str=None):
         return
     try:
         if target_date_str:
-            sb.table("teacher_daily_logs").delete().eq("date", target_date_str).execute()
+            sb.table("thaghr_teacher_daily_logs").delete().eq("date", target_date_str).execute()
         payload = [{
             "date": str(r['التاريخ']),
             "hijri_date": r.get('التاريخ_الهجري', ''),
@@ -171,7 +171,7 @@ def save_teacher_logs_to_db(records, target_date_str=None):
             "notes": r.get('ملاحظات', '-'),
         } for r in records]
         if payload:
-            sb.table("teacher_daily_logs").insert(payload).execute()
+            sb.table("thaghr_teacher_daily_logs").insert(payload).execute()
     except Exception:
         pass
     finally:
@@ -185,12 +185,12 @@ def delete_teacher_logs_from_db(scope):
     try:
         today_str = str(date.today())
         if "يومي" in scope:
-            sb.table("teacher_daily_logs").delete().eq("date", today_str).execute()
+            sb.table("thaghr_teacher_daily_logs").delete().eq("date", today_str).execute()
         elif "أسبوعي" in scope:
             seven = str(date.today() - timedelta(days=7))
-            sb.table("teacher_daily_logs").delete().gte("date", seven).execute()
+            sb.table("thaghr_teacher_daily_logs").delete().gte("date", seven).execute()
         else:
-            sb.table("teacher_daily_logs").delete().neq("teacher_name", "__none__").execute()
+            sb.table("thaghr_teacher_daily_logs").delete().neq("teacher_name", "__none__").execute()
     except Exception:
         pass
     finally:
@@ -203,7 +203,7 @@ def add_student_db(student_id, student_name, grade, section):
     if sb is None:
         return
     try:
-        sb.table("custom_student_roster").upsert({
+        sb.table("thaghr_custom_student_roster").upsert({
             "student_id": str(student_id), "student_name": str(student_name),
             "grade": str(grade), "section": str(section),
         }).execute()
@@ -223,7 +223,7 @@ def _fetch_roster_rows():
     if sb is None:
         return []
     try:
-        res = sb.table("custom_student_roster").select(
+        res = sb.table("thaghr_custom_student_roster").select(
             "student_id, student_name, grade, section"
         ).limit(50000).execute()
         return res.data or []
@@ -451,14 +451,19 @@ st.set_page_config(
     page_title="نظام تحضير متوسطة الثغر النموذجية",
     page_icon="🏫",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
 # تنبيه في حال عدم ربط قاعدة البيانات السحابية
 if not supabase_ready():
-    st.warning(
-        "⚠️ لم يتم ربط قاعدة بيانات Supabase بعد. الحفظ الدائم لن يعمل حتى تضيف رابط ومفتاح Supabase في إعدادات التطبيق (Secrets)."
-    )
+    with st.expander("🔌 خطوة مطلوبة لمرة واحدة: ربط قاعدة بيانات Supabase (اضغط للتفاصيل)", expanded=True):
+        st.info(
+            "البرنامج يعمل، لكن **الحفظ الدائم لم يُفعّل بعد**. لتفعيله لمرة واحدة:\n\n"
+            "1️⃣ أنشئ مشروعاً مجانياً في supabase.com\n\n"
+            "2️⃣ افتح SQL Editor والصق محتوى ملف supabase_setup.sql ثم Run\n\n"
+            "3️⃣ من Project Settings > API انسخ (Project URL) و (anon public key)\n\n"
+            "4️⃣ أضفهما في إعدادات التطبيق (Secrets) كما في ملف secrets_template.toml ثم أعد تحميل الصفحة."
+        )
 
 # تهيئة حالة فك قفل أدوات التعديل
 if 'dev_unlocked' not in st.session_state:
@@ -698,13 +703,17 @@ def generate_teacher_range_report_html(teacher_summary_list, start_d, end_d, cal
     return html_code
 
 # =========================================================
-# 6. القائمة الجانبية وتصفح الأقسام
+# 6. اختيار لوحة التحكم (في الصفحة الرئيسية ليظهر على الجوال والحاسب)
 # =========================================================
 st.sidebar.title("📌 نظام المتابعة")
-role = st.sidebar.radio(
+st.markdown("<div style='background:#EFF6FF; border-right:5px solid #2563EB; border-radius:10px; padding:10px 14px; margin-bottom:12px; font-weight:700; color:#1E3A8A;'>👇 اختر لوحة التحكم المطلوبة:</div>", unsafe_allow_html=True)
+role = st.radio(
     "اختر لوحة التحكم:",
-    ["👨‍🏫 حساب المعلم (رصد الحضور)", "👔 حساب الوكيل والمدير (المتابعة والتصدير)"]
+    ["👨‍🏫 حساب المعلم (رصد الحضور)", "👔 حساب الوكيل والمدير (المتابعة والتصدير)"],
+    horizontal=True,
+    label_visibility="collapsed"
 )
+st.write("")
 
 
 # =========================================================
@@ -814,10 +823,22 @@ else:
         df = load_student_attendance_db()
         teacher_logs_db = load_teacher_logs_from_db()
 
-        tot_records = len(df)
-        tot_absent = len(df[df['الحالة'] == 'غائب']) if not df.empty else 0
-        tot_out = len(df[df['الحالة'] == 'خارج الفصل']) if not df.empty else 0
-        tot_late = len(df[df['الحالة'] == 'متأخر']) if not df.empty else 0
+        # اختيار اليوم لتحديث العدادات ديناميكياً
+        metric_dates = ["📆 الكل (إجمالي السجل)"] + (sorted(list(df['التاريخ'].unique()), reverse=True) if not df.empty else [])
+        metric_day = st.selectbox("📅 اختر اليوم لعرض إحصائياته (تتغير العدادات تلقائياً):", metric_dates, key="metric_day_sel")
+
+        if not df.empty and not metric_day.startswith("📆"):
+            df_metric = df[df['التاريخ'] == metric_day]
+        else:
+            df_metric = df
+
+        tot_records = len(df_metric)
+        tot_absent = len(df_metric[df_metric['الحالة'] == 'غائب']) if not df_metric.empty else 0
+        tot_out = len(df_metric[df_metric['الحالة'] == 'خارج الفصل']) if not df_metric.empty else 0
+        tot_late = len(df_metric[df_metric['الحالة'] == 'متأخر']) if not df_metric.empty else 0
+
+        _day_lbl = "إجمالي السجل" if metric_day.startswith("📆") else f"يوم {metric_day}"
+        st.markdown(f"<div style='text-align:center; color:#0F2552; font-weight:700; margin-bottom:8px;'>📊 الإحصائيات المعروضة: {_day_lbl}</div>", unsafe_allow_html=True)
 
         m1, m2, m3, m4 = st.columns(4)
         m1.markdown(f'<div class="metric-card-box"><div class="metric-card-val" style="color:#0F2552;">{tot_records}</div><div class="metric-card-lbl">إجمالي عمليات الرصد</div></div>', unsafe_allow_html=True)
