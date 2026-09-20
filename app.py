@@ -1093,4 +1093,3 @@ st.sidebar.markdown("""
     <small style="color:#F59E0B; font-weight:bold;">✨ تصميم: محمد سامي السعيد ✨</small>
 </div>
 """, unsafe_allow_html=True)
-
