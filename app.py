@@ -738,35 +738,52 @@ tr:nth-child(even) {{ background:#F8FAFC; }}
 </html>"""
     return html_code
 
-def generate_period_counts_report_html(counts_rows, periods_order, report_label, hijri_label):
-    period_headers = "".join([f"<th>{p}</th>" for p in periods_order])
-    grand_period_totals = {p: 0 for p in periods_order}
-    grand_total = 0
+def generate_period_counts_report_html(counts_rows, report_label, hijri_label):
     body_rows = ""
-    for idx, row in enumerate(counts_rows, 1):
-        cells = ""
-        for p in periods_order:
-            val = int(row.get(p, 0))
-            grand_period_totals[p] += val
-            cstyle = "color:#0F2552;font-weight:700;" if val > 0 else "color:#94A3B8;"
-            cells += f'<td style="{cstyle}">{val}</td>'
-        g_total = int(row.get("الإجمالي", 0))
-        grand_total += g_total
-        body_rows += (f'<tr><td>{idx}</td>'
-                      f'<td style="text-align:right;font-weight:800;color:#0F2552;">{row["الصف"]}</td>'
-                      f'{cells}'
-                      f'<td style="background:#EFF6FF;font-weight:800;color:#1E3A8A;">{g_total}</td></tr>')
-    totals_cells = "".join([f'<td style="font-weight:800;color:#DC2626;">{grand_period_totals[p]}</td>' for p in periods_order])
+    grades_order = []
+    grouped = {}
+    for r in counts_rows:
+        g = r.get("الصف", "")
+        s = r.get("الفصل", "")
+        if g not in grouped:
+            grouped[g] = {}
+            grades_order.append(g)
+        if s not in grouped[g]:
+            grouped[g][s] = []
+        grouped[g][s].append(r)
+
+    seq = 0
+    grand_total = 0
+    if not counts_rows:
+        body_rows = '<tr><td colspan="4" style="color:#64748B;padding:16px;">لا توجد بيانات مرصودة ضمن النطاق المحدد.</td></tr>'
+    for g in grades_order:
+        body_rows += (f'<tr style="background:#0F2552;color:#FFFFFF;">'
+                      f'<td colspan="4" style="text-align:right;font-weight:800;font-size:14px;">🏫 {g}</td></tr>')
+        for s, rows in grouped[g].items():
+            body_rows += (f'<tr style="background:#E0E7FF;">'
+                          f'<td colspan="4" style="text-align:right;font-weight:700;color:#0F2552;">🚪 {s}</td></tr>')
+            sec_total = 0
+            for r in rows:
+                seq += 1
+                cnt = int(r.get("عدد الطلاب", 0))
+                sec_total += cnt
+                body_rows += (f'<tr><td style="font-weight:700;color:#1E293B;">{r.get("الحصة", "")}</td>'
+                              f'<td style="text-align:right;color:#1E293B;font-weight:600;">{r.get("اسم المعلم", "غير محدد")}</td>'
+                              f'<td style="font-weight:800;color:#0F2552;">{cnt} طالب</td>'
+                              f'<td style="color:#94A3B8;">{seq}</td></tr>')
+            grand_total += sec_total
+            body_rows += (f'<tr style="background:#EEF2FF;">'
+                          f'<td colspan="2" style="text-align:right;font-weight:800;color:#0F2552;">إجمالي طلاب {s}</td>'
+                          f'<td colspan="2" style="background:#DBEAFE;font-weight:900;color:#0F2552;">{sec_total} طالب</td></tr>')
     body_rows += (f'<tr style="background:#F1F5F9;">'
-                  f'<td colspan="2" style="font-weight:800;color:#0F2552;text-align:right;">الإجمالي العام لكل حصة</td>'
-                  f'{totals_cells}'
-                  f'<td style="background:#DBEAFE;font-weight:900;color:#0F2552;">{grand_total}</td></tr>')
+                  f'<td colspan="2" style="text-align:right;font-weight:900;color:#DC2626;">الإجمالي العام لعدد الطلاب المرصودين</td>'
+                  f'<td colspan="2" style="background:#FEE2E2;font-weight:900;color:#DC2626;">{grand_total} طالب</td></tr>')
 
     html_code = f"""<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<title>تقرير أعداد الطلاب حسب الحصص</title>
+<title>تقرير الحصص والمعلمين وعدد الطلاب</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
 body {{ font-family:'Cairo',sans-serif; text-align:right; padding:25px; background:#FFF; color:#1E293B; direction:rtl; }}
@@ -777,7 +794,6 @@ h4 {{ color:#4B5563; margin:5px; font-weight:700; font-size:16px; }}
 table {{ width:100%; border-collapse:collapse; margin-top:10px; }}
 th, td {{ border:1px solid #CBD5E1; padding:10px; text-align:center; font-size:13px; }}
 th {{ background:#0F2552; color:white; font-weight:700; }}
-tr:nth-child(even) {{ background:#F8FAFC; }}
 .footer {{ margin-top:22px; text-align:center; color:#94A3B8; font-size:12px; border-top:1px solid #E2E8F0; padding-top:10px; }}
 @media print {{ body {{ padding:10px; }} }}
 </style>
@@ -785,14 +801,14 @@ tr:nth-child(even) {{ background:#F8FAFC; }}
 <body>
 <div class="header">
     <h2>🏫 مدرسة متوسطة الثغر النموذجية</h2>
-    <h4>تقرير عدد الطلاب المرصودين في كل حصة لكل صف</h4>
+    <h4>تقرير الحصص ومعلميها وعدد الطلاب المرصودين لكل فصل</h4>
 </div>
 <div class="meta">
     📅 النطاق: {report_label} &nbsp;|&nbsp; 🌙 التاريخ الهجري: {hijri_label}
 </div>
 <table>
 <thead>
-<tr><th>#</th><th>الصف الدراسي</th>{period_headers}<th>الإجمالي</th></tr>
+<tr><th>الحصة</th><th>اسم المعلم</th><th>عدد الطلاب</th><th>#</th></tr>
 </thead>
 <tbody>
 {body_rows}
@@ -999,8 +1015,8 @@ else:
                         st.error("يرجى التأشير على التأكيد أولاً.")
 
         st.write("---")
-        st.markdown("### 🖨️ تقرير عدد الطلاب في كل حصة لكل صف")
-        with st.expander("📊 عرض وطباعة تقرير أعداد الطلاب حسب الحصص (من الأولى إلى السابعة)", expanded=False):
+        st.markdown("### 🖨️ تقرير الحصص والمعلمين وعدد الطلاب لكل فصل")
+        with st.expander("📊 عرض وطباعة تقرير الحصص (الحصة / اسم المعلم / عدد الطلاب) لكل فصل", expanded=False):
             _pc_grades_order = ["الأول المتوسط", "الثاني المتوسط", "الثالث المتوسط"]
             _pc_periods_order = [f"الحصة {i}" for i in range(1, 8)]
             pc_dates = ["📆 الكل (كل الأيام)"] + (sorted(list(df['التاريخ'].unique()), reverse=True) if not df.empty else [])
@@ -1012,27 +1028,35 @@ else:
                 df_pc = df.copy() if not df.empty else pd.DataFrame(columns=STU_COLS)
                 pc_label = "لكل الأيام (السجل الشامل)"
 
+            _pc_db = get_active_students_db()
             pc_rows = []
             for _g in _pc_grades_order:
-                _row = {"الصف": _g}
-                _g_total = 0
-                for _p in _pc_periods_order:
-                    _cnt = len(df_pc[(df_pc['الصف'] == _g) & (df_pc['الحصة'] == _p)]) if not df_pc.empty else 0
-                    _row[_p] = _cnt
-                    _g_total += _cnt
-                _row["الإجمالي"] = _g_total
-                pc_rows.append(_row)
+                if _g not in _pc_db:
+                    continue
+                for _s in list(_pc_db[_g].keys()):
+                    for _p in _pc_periods_order:
+                        if df_pc.empty:
+                            continue
+                        _sub = df_pc[(df_pc['الصف'] == _g) & (df_pc['الفصل'] == _s) & (df_pc['الحصة'] == _p)]
+                        if _sub.empty:
+                            continue
+                        _teachers = "، ".join(sorted({str(t).strip() for t in _sub['اسم المعلم'].tolist() if str(t).strip()})) or "غير محدد"
+                        _cnt = int(_sub['رقم الطالب'].nunique())
+                        pc_rows.append({"الصف": _g, "الفصل": _s, "الحصة": _p, "اسم المعلم": _teachers, "عدد الطلاب": _cnt})
 
-            df_pc_table = pd.DataFrame(pc_rows)
-            st.markdown(f"#### 📊 جدول أعداد الطلاب المرصودين حسب الحصص ({pc_label}):")
-            st.dataframe(df_pc_table, use_container_width=True)
+            df_pc_table = pd.DataFrame(pc_rows, columns=["الصف", "الفصل", "الحصة", "اسم المعلم", "عدد الطلاب"])
+            st.markdown(f"#### 📊 جدول الحصص والمعلمين وعدد الطلاب لكل فصل ({pc_label}):")
+            if pc_rows:
+                st.dataframe(df_pc_table, use_container_width=True)
+            else:
+                st.info("لا توجد بيانات مرصودة ضمن النطاق المحدد.")
 
             pc_hijri = gregorian_to_hijri_approx(date.today())
-            pc_html = generate_period_counts_report_html(pc_rows, _pc_periods_order, pc_label, pc_hijri)
+            pc_html = generate_period_counts_report_html(pc_rows, pc_label, pc_hijri)
             st.download_button(
-                label="🖨️ طباعة تقرير أعداد الطلاب حسب الحصص (PDF)",
+                label="🖨️ طباعة تقرير الحصص والمعلمين وعدد الطلاب (PDF)",
                 data=pc_html.encode('utf-8'),
-                file_name=f"تقرير_اعداد_الطلاب_بالحصص_{date.today()}.html",
+                file_name=f"تقرير_الحصص_والمعلمين_{date.today()}.html",
                 mime="text/html",
                 key="btn_print_period_counts",
                 use_container_width=True
