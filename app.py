@@ -884,6 +884,103 @@ th {{ background:#0F2552; color:white; font-weight:700; }}
 </html>"""
     return html_code
 
+def generate_charts_report_html(counts_rows, report_label, hijri_label):
+    """يولّد تقرير HTML مستقل برسوم أعمدة (حاضر/غائب) لكل صف وفصل — CSS نقي مدمج قابل للطباعة."""
+    grades_order = []
+    grouped = {}
+    for r in counts_rows:
+        g = r.get("الصف", "")
+        s = r.get("الفصل", "")
+        if g not in grouped:
+            grouped[g] = {}
+            grades_order.append(g)
+        if s not in grouped[g]:
+            grouped[g][s] = {"present": 0, "absent": 0, "total": 0}
+        grouped[g][s]["present"] += int(r.get("الحاضرون", 0))
+        grouped[g][s]["absent"] += int(r.get("الغائبون", 0))
+        grouped[g][s]["total"] += int(r.get("عدد الطلاب", 0))
+
+    charts_html = ""
+    if not counts_rows:
+        charts_html = '<div style="text-align:center;color:#64748B;padding:40px;font-weight:700;">لا توجد بيانات مرصودة ضمن النطاق المحدد.</div>'
+    for g in grades_order:
+        secs = grouped[g]
+        max_val = max([max(v["present"], v["absent"]) for v in secs.values()] + [1])
+        g_present = sum(v["present"] for v in secs.values())
+        g_absent = sum(v["absent"] for v in secs.values())
+        bars = ""
+        for s, v in secs.items():
+            ph = int(round(v["present"] / max_val * 170)) if max_val else 0
+            ah = int(round(v["absent"] / max_val * 170)) if max_val else 0
+            ph = max(ph, 2) if v["present"] > 0 else 1
+            ah = max(ah, 2) if v["absent"] > 0 else 1
+            bars += (f'<div class="group">'
+                     f'<div class="bars">'
+                     f'<div class="bar-wrap"><span class="val vp">{v["present"]}</span>'
+                     f'<div class="bar present" style="height:{ph}px;"></div></div>'
+                     f'<div class="bar-wrap"><span class="val va">{v["absent"]}</span>'
+                     f'<div class="bar absent" style="height:{ah}px;"></div></div>'
+                     f'</div>'
+                     f'<div class="xlabel">{s}</div></div>')
+        charts_html += (f'<div class="chart-card">'
+                        f'<div class="chart-head"><h3>🏫 {g}</h3>'
+                        f'<span class="chart-sum">حاضر: <b style="color:#16A34A;">{g_present}</b> &nbsp;|&nbsp; غائب: <b style="color:#DC2626;">{g_absent}</b></span></div>'
+                        f'<div class="chart">{bars}</div></div>')
+
+    html_code = f"""<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>الرسوم البيانية للحضور والغياب</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+body {{ font-family:'Cairo',sans-serif; text-align:right; padding:25px; background:#F8FAFC; color:#1E293B; direction:rtl; }}
+.header {{ text-align:center; border-bottom:3px solid #0F2552; padding-bottom:12px; margin-bottom:18px; }}
+h2 {{ color:#0F2552; margin:5px; font-weight:800; font-size:22px; }}
+h4 {{ color:#4B5563; margin:5px; font-weight:700; font-size:16px; }}
+.meta {{ text-align:center; color:#64748B; font-size:13px; margin-bottom:18px; font-weight:600; }}
+.legend {{ text-align:center; margin-bottom:18px; font-weight:700; font-size:13px; }}
+.legend span {{ display:inline-block; margin:0 10px; }}
+.legend i {{ display:inline-block; width:14px; height:14px; border-radius:3px; vertical-align:middle; margin-left:5px; }}
+.chart-card {{ background:#FFFFFF; border:1px solid #E2E8F0; border-radius:14px; padding:18px 18px 10px; margin-bottom:20px; box-shadow:0 2px 10px rgba(15,37,82,0.06); break-inside:avoid; }}
+.chart-head {{ display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #EEF2FF; padding-bottom:8px; margin-bottom:14px; }}
+.chart-head h3 {{ margin:0; color:#0F2552; font-weight:800; font-size:17px; }}
+.chart-sum {{ font-size:13px; color:#475569; font-weight:700; }}
+.chart {{ display:flex; align-items:flex-end; justify-content:space-around; gap:14px; min-height:220px; padding:10px 4px 0; border-bottom:2px solid #CBD5E1; flex-wrap:wrap; }}
+.group {{ display:flex; flex-direction:column; align-items:center; }}
+.bars {{ display:flex; align-items:flex-end; gap:8px; height:200px; }}
+.bar-wrap {{ display:flex; flex-direction:column; align-items:center; justify-content:flex-end; }}
+.val {{ font-size:12px; font-weight:800; margin-bottom:4px; }}
+.vp {{ color:#16A34A; }}
+.va {{ color:#DC2626; }}
+.bar {{ width:34px; border-radius:6px 6px 0 0; }}
+.bar.present {{ background:linear-gradient(180deg,#22C55E,#16A34A); }}
+.bar.absent {{ background:linear-gradient(180deg,#F87171,#DC2626); }}
+.xlabel {{ margin-top:8px; font-size:13px; font-weight:700; color:#0F2552; }}
+.footer {{ margin-top:22px; text-align:center; color:#94A3B8; font-size:12px; border-top:1px solid #E2E8F0; padding-top:10px; }}
+@media print {{ body {{ padding:10px; background:#FFF; }} .chart-card {{ box-shadow:none; }} }}
+</style>
+</head>
+<body>
+<div class="header">
+    <h2>🏫 مدرسة متوسطة الثغر النموذجية</h2>
+    <h4>الرسوم البيانية للحضور والغياب لكل صف وفصل</h4>
+</div>
+<div class="meta">
+    📅 النطاق: {report_label} &nbsp;|&nbsp; 🌙 التاريخ الهجري: {hijri_label}
+</div>
+<div class="legend">
+    <span><i style="background:#16A34A;"></i> الطلاب الحاضرون</span>
+    <span><i style="background:#DC2626;"></i> الطلاب الغائبون</span>
+</div>
+{charts_html}
+<div class="footer">
+    تم توليد هذا التقرير آلياً من نظام تحضير متوسطة الثغر النموذجية
+</div>
+</body>
+</html>"""
+    return html_code
+
 # =========================================================
 # اختيار لوحة التحكم
 # =========================================================
@@ -1125,6 +1222,41 @@ else:
                 file_name=f"تقرير_الحصص_والمعلمين_{date.today()}.html",
                 mime="text/html",
                 key="btn_print_period_counts",
+                use_container_width=True
+            )
+
+        with st.expander("📈 الرسوم البيانية (أعمدة الحضور والغياب لكل صف وفصل)", expanded=False):
+            if pc_rows:
+                _ch_grouped = {}
+                _ch_order = []
+                for _r in pc_rows:
+                    _gg = _r["الصف"]
+                    _ss = _r["الفصل"]
+                    if _gg not in _ch_grouped:
+                        _ch_grouped[_gg] = {}
+                        _ch_order.append(_gg)
+                    if _ss not in _ch_grouped[_gg]:
+                        _ch_grouped[_gg][_ss] = {"حاضر": 0, "غائب": 0}
+                    _ch_grouped[_gg][_ss]["حاضر"] += int(_r.get("الحاضرون", 0))
+                    _ch_grouped[_gg][_ss]["غائب"] += int(_r.get("الغائبون", 0))
+                st.markdown(f"#### 📈 أعمدة الحضور والغياب ({pc_label}):")
+                for _gg in _ch_order:
+                    st.markdown(f"**🏫 {_gg}**")
+                    _chart_df = pd.DataFrame([
+                        {"الفصل": _ss, "حاضر": _vv["حاضر"], "غائب": _vv["غائب"]}
+                        for _ss, _vv in _ch_grouped[_gg].items()
+                    ]).set_index("الفصل")
+                    st.bar_chart(_chart_df, color=["#DC2626", "#16A34A"])
+            else:
+                st.info("لا توجد بيانات مرصودة لرسمها ضمن النطاق المحدد.")
+
+            charts_html = generate_charts_report_html(pc_rows, pc_label, pc_hijri)
+            st.download_button(
+                label="📈 تصدير الرسوم البيانية (HTML)",
+                data=charts_html.encode('utf-8'),
+                file_name=f"رسوم_بيانية_الحضور_والغياب_{date.today()}.html",
+                mime="text/html",
+                key="btn_export_charts_html",
                 use_container_width=True
             )
 
