@@ -472,21 +472,18 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
 
-/* ضبط خط القاهرة والاتجاه وتثبيت اللون الأسود المباشر */
 html, body, .stApp {
     font-family: 'Cairo', sans-serif !important;
     direction: rtl !important;
     text-align: right !important;
     background-color: #F8FAFC !important;
-    color: #000000 !important; /* 👈 جعل لون النص العام أسود واضحة */
+    color: #000000 !important;
 }
 
-/* حماية خط الأيقونات لمنع تداخل النصوص والأسهم على الجوال */
 [data-testid="stIcon"], [class*="material-symbols"], [class*="Material"], [class*="icon"], i {
     font-family: 'Material Symbols Outlined', 'Material Icons' !important;
 }
 
-/* تنسيق الشريط الجانبي */
 [data-testid="stSidebar"] {
     direction: rtl !important;
     text-align: right !important;
@@ -499,7 +496,6 @@ html, body, .stApp {
     color: #F8FAFC !important;
 }
 
-/* تنسيق الحاوية الرئيسية */
 .main .block-container {
     direction: rtl !important;
     text-align: right !important;
@@ -507,7 +503,6 @@ html, body, .stApp {
     padding-bottom: 2rem !important;
 }
 
-/* بطاقات الإحصائيات الفاخرة */
 .metric-card-box {
     background: linear-gradient(135deg, #FFFFFF 0%, #EFF6FF 100%);
     border-radius: 14px;
@@ -530,9 +525,8 @@ html, body, .stApp {
     margin-top: 4px;
 }
 
-/* بطاقة الطالب في كشف الرصد - خلفية بيضاء ثابتة واسم أسود داكن عريض */
 .student-row-card, .student-card {
-    background-color: #FFFFFF !important; /* خلفية بيضاء ناصعة للبطاقة */
+    background-color: #FFFFFF !important;
     border-radius: 10px;
     padding: 12px 16px;
     margin-bottom: 10px;
@@ -541,17 +535,16 @@ html, body, .stApp {
 }
 
 .student-row-card b, .student-card b {
-    color: #000000 !important; /* 👈 لون اسم الطالب أسود عريض وواضح جداً على الجوال */
+    color: #000000 !important;
     font-size: 16px !important;
     font-weight: 800 !important;
 }
 
 .student-row-card small, .student-card small {
-    color: #475569 !important; /* 👈 لون رقم الهوية رمادي داكن واضح */
+    color: #475569 !important;
     font-weight: 600 !important;
 }
 
-/* الأزرار المدورة والأنيميشن */
 .stButton > button {
     border-radius: 8px !important;
     font-weight: 700 !important;
@@ -563,13 +556,11 @@ html, body, .stApp {
     transform: translateY(-1px) !important;
 }
 
-/* محاذاة أزرار الاختيار الراديو */
 div[role="radiogroup"] {
     direction: rtl !important;
     justify-content: flex-start !important;
 }
 
-/* ضبط القوائم والحقول */
 .stSelectbox, .stTextInput, .stDateInput, .stNumberInput {
     direction: rtl !important;
     text-align: right !important;
@@ -579,7 +570,6 @@ div[role="radiogroup"] {
     direction: rtl !important;
 }
 
-/* شارات حالة الاتصال */
 .status-badge-ok {
     background-color: #10B981;
     color: white;
@@ -670,7 +660,7 @@ def generate_printable_html(df_subset, report_title):
         status_color = "#DC2626" if row['الحالة'] == "غائب" else "#D97706" if row['الحالة'] in ["خارج الفصل"] else "#CA8A04" if row['الحالة'] == "متأخر" else "#16A34A"
         teacher = row.get('اسم المعلم', 'غير محدد')
         rows_html += f'<tr><td>{idx}</td><td style="text-align: right;"><b>{row["اسم الطالب"]}</b><br><small style="color:#64748B;">الهوية: {row["رقم الطالب"]}</small></td><td>{row["الصف"]}</td><td>{row["الفصل"]}</td><td>{row["الحصة"]}</td><td>{teacher}</td><td style="color:{status_color};font-weight:bold;">{row["الحالة"]}</td></tr>'
-    
+
     html_code = f"""<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -714,7 +704,7 @@ def generate_teacher_range_report_html(teacher_summary_list, start_d, end_d, cal
         absent_style = "color:#DC2626;font-weight:bold;" if absent_cnt > 0 else "color:#16A34A;"
         late_style = "color:#CA8A04;font-weight:bold;" if late_cnt > 0 else "color:#16A34A;"
         rows_html += f'<tr><td>{idx}</td><td style="text-align:right;font-weight:bold;">{rec["اسم المعلم"]}</td><td style="color:#16A34A;font-weight:bold;">{present_cnt} يوم</td><td style="{absent_style}">{absent_cnt} مرة</td><td style="{late_style}">{late_cnt} مرة</td><td>{rec.get("إجمالي الحصص المرصودة", 0)} حصة</td></tr>'
-    
+
     html_code = f"""<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -748,6 +738,73 @@ tr:nth-child(even) {{ background:#F8FAFC; }}
 </html>"""
     return html_code
 
+def generate_period_counts_report_html(counts_rows, periods_order, report_label, hijri_label):
+    period_headers = "".join([f"<th>{p}</th>" for p in periods_order])
+    grand_period_totals = {p: 0 for p in periods_order}
+    grand_total = 0
+    body_rows = ""
+    for idx, row in enumerate(counts_rows, 1):
+        cells = ""
+        for p in periods_order:
+            val = int(row.get(p, 0))
+            grand_period_totals[p] += val
+            cstyle = "color:#0F2552;font-weight:700;" if val > 0 else "color:#94A3B8;"
+            cells += f'<td style="{cstyle}">{val}</td>'
+        g_total = int(row.get("الإجمالي", 0))
+        grand_total += g_total
+        body_rows += (f'<tr><td>{idx}</td>'
+                      f'<td style="text-align:right;font-weight:800;color:#0F2552;">{row["الصف"]}</td>'
+                      f'{cells}'
+                      f'<td style="background:#EFF6FF;font-weight:800;color:#1E3A8A;">{g_total}</td></tr>')
+    totals_cells = "".join([f'<td style="font-weight:800;color:#DC2626;">{grand_period_totals[p]}</td>' for p in periods_order])
+    body_rows += (f'<tr style="background:#F1F5F9;">'
+                  f'<td colspan="2" style="font-weight:800;color:#0F2552;text-align:right;">الإجمالي العام لكل حصة</td>'
+                  f'{totals_cells}'
+                  f'<td style="background:#DBEAFE;font-weight:900;color:#0F2552;">{grand_total}</td></tr>')
+
+    html_code = f"""<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>تقرير أعداد الطلاب حسب الحصص</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+body {{ font-family:'Cairo',sans-serif; text-align:right; padding:25px; background:#FFF; color:#1E293B; direction:rtl; }}
+.header {{ text-align:center; border-bottom:3px solid #0F2552; padding-bottom:12px; margin-bottom:18px; }}
+h2 {{ color:#0F2552; margin:5px; font-weight:800; font-size:22px; }}
+h4 {{ color:#4B5563; margin:5px; font-weight:700; font-size:16px; }}
+.meta {{ text-align:center; color:#64748B; font-size:13px; margin-bottom:16px; font-weight:600; }}
+table {{ width:100%; border-collapse:collapse; margin-top:10px; }}
+th, td {{ border:1px solid #CBD5E1; padding:10px; text-align:center; font-size:13px; }}
+th {{ background:#0F2552; color:white; font-weight:700; }}
+tr:nth-child(even) {{ background:#F8FAFC; }}
+.footer {{ margin-top:22px; text-align:center; color:#94A3B8; font-size:12px; border-top:1px solid #E2E8F0; padding-top:10px; }}
+@media print {{ body {{ padding:10px; }} }}
+</style>
+</head>
+<body>
+<div class="header">
+    <h2>🏫 مدرسة متوسطة الثغر النموذجية</h2>
+    <h4>تقرير عدد الطلاب المرصودين في كل حصة لكل صف</h4>
+</div>
+<div class="meta">
+    📅 النطاق: {report_label} &nbsp;|&nbsp; 🌙 التاريخ الهجري: {hijri_label}
+</div>
+<table>
+<thead>
+<tr><th>#</th><th>الصف الدراسي</th>{period_headers}<th>الإجمالي</th></tr>
+</thead>
+<tbody>
+{body_rows}
+</tbody>
+</table>
+<div class="footer">
+    تم توليد هذا التقرير آلياً من نظام تحضير متوسطة الثغر النموذجية
+</div>
+</body>
+</html>"""
+    return html_code
+
 # =========================================================
 # اختيار لوحة التحكم
 # =========================================================
@@ -765,9 +822,6 @@ st.write("")
 # =========================================================
 if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
 
-    # =========================================================
-    # 🇸🇦 بنر اليوم الوطني السعودي - صفحة المعلم
-    # =========================================================
     st.markdown("""
     <div style="
         background: linear-gradient(135deg, #006C35 0%, #004D25 100%);
@@ -943,6 +997,46 @@ else:
                         st.rerun()
                     else:
                         st.error("يرجى التأشير على التأكيد أولاً.")
+
+        st.write("---")
+        st.markdown("### 🖨️ تقرير عدد الطلاب في كل حصة لكل صف")
+        with st.expander("📊 عرض وطباعة تقرير أعداد الطلاب حسب الحصص (من الأولى إلى السابعة)", expanded=False):
+            _pc_grades_order = ["الأول المتوسط", "الثاني المتوسط", "الثالث المتوسط"]
+            _pc_periods_order = [f"الحصة {i}" for i in range(1, 8)]
+            pc_dates = ["📆 الكل (كل الأيام)"] + (sorted(list(df['التاريخ'].unique()), reverse=True) if not df.empty else [])
+            pc_sel_date = st.selectbox("📅 اختر اليوم المراد عرض تقريره:", pc_dates, key="pc_date_sel")
+            if (not df.empty) and (not str(pc_sel_date).startswith("📆")):
+                df_pc = df[df['التاريخ'] == pc_sel_date]
+                pc_label = f"ليوم {pc_sel_date}"
+            else:
+                df_pc = df.copy() if not df.empty else pd.DataFrame(columns=STU_COLS)
+                pc_label = "لكل الأيام (السجل الشامل)"
+
+            pc_rows = []
+            for _g in _pc_grades_order:
+                _row = {"الصف": _g}
+                _g_total = 0
+                for _p in _pc_periods_order:
+                    _cnt = len(df_pc[(df_pc['الصف'] == _g) & (df_pc['الحصة'] == _p)]) if not df_pc.empty else 0
+                    _row[_p] = _cnt
+                    _g_total += _cnt
+                _row["الإجمالي"] = _g_total
+                pc_rows.append(_row)
+
+            df_pc_table = pd.DataFrame(pc_rows)
+            st.markdown(f"#### 📊 جدول أعداد الطلاب المرصودين حسب الحصص ({pc_label}):")
+            st.dataframe(df_pc_table, use_container_width=True)
+
+            pc_hijri = gregorian_to_hijri_approx(date.today())
+            pc_html = generate_period_counts_report_html(pc_rows, _pc_periods_order, pc_label, pc_hijri)
+            st.download_button(
+                label="🖨️ طباعة تقرير أعداد الطلاب حسب الحصص (PDF)",
+                data=pc_html.encode('utf-8'),
+                file_name=f"تقرير_اعداد_الطلاب_بالحصص_{date.today()}.html",
+                mime="text/html",
+                key="btn_print_period_counts",
+                use_container_width=True
+            )
 
         st.write("---")
         st.markdown("### 🔍 فلترة وتخصيص بيانات التقارير والطباعة")
