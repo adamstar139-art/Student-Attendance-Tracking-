@@ -799,30 +799,48 @@ def generate_period_counts_report_html(counts_rows, report_label, hijri_label):
 
     seq = 0
     grand_total = 0
+    grand_present = 0
+    grand_absent = 0
     if not counts_rows:
-        body_rows = '<tr><td colspan="4" style="color:#64748B;padding:16px;">لا توجد بيانات مرصودة ضمن النطاق المحدد.</td></tr>'
+        body_rows = '<tr><td colspan="6" style="color:#64748B;padding:16px;">لا توجد بيانات مرصودة ضمن النطاق المحدد.</td></tr>'
     for g in grades_order:
         body_rows += (f'<tr style="background:#0F2552;color:#FFFFFF;">'
-                      f'<td colspan="4" style="text-align:right;font-weight:800;font-size:14px;">🏫 {g}</td></tr>')
+                      f'<td colspan="6" style="text-align:right;font-weight:800;font-size:14px;">🏫 {g}</td></tr>')
         for s, rows in grouped[g].items():
             body_rows += (f'<tr style="background:#E0E7FF;">'
-                          f'<td colspan="4" style="text-align:right;font-weight:700;color:#0F2552;">🚪 {s}</td></tr>')
+                          f'<td colspan="6" style="text-align:right;font-weight:700;color:#0F2552;">🚪 {s}</td></tr>')
             sec_total = 0
+            sec_present = 0
+            sec_absent = 0
             for r in rows:
                 seq += 1
                 cnt = int(r.get("عدد الطلاب", 0))
+                pres = int(r.get("الحاضرون", 0))
+                absn = int(r.get("الغائبون", 0))
                 sec_total += cnt
+                sec_present += pres
+                sec_absent += absn
                 body_rows += (f'<tr><td style="font-weight:700;color:#1E293B;">{r.get("الحصة", "")}</td>'
                               f'<td style="text-align:right;color:#1E293B;font-weight:600;">{r.get("اسم المعلم", "غير محدد")}</td>'
-                              f'<td style="font-weight:800;color:#0F2552;">{cnt} طالب</td>'
+                              f'<td style="font-weight:800;color:#0F2552;">{cnt}</td>'
+                              f'<td style="font-weight:800;color:#16A34A;">{pres}</td>'
+                              f'<td style="font-weight:800;color:#DC2626;">{absn}</td>'
                               f'<td style="color:#94A3B8;">{seq}</td></tr>')
             grand_total += sec_total
+            grand_present += sec_present
+            grand_absent += sec_absent
             body_rows += (f'<tr style="background:#EEF2FF;">'
-                          f'<td colspan="2" style="text-align:right;font-weight:800;color:#0F2552;">إجمالي طلاب {s}</td>'
-                          f'<td colspan="2" style="background:#DBEAFE;font-weight:900;color:#0F2552;">{sec_total} طالب</td></tr>')
+                          f'<td colspan="2" style="text-align:right;font-weight:800;color:#0F2552;">إجمالي {s}</td>'
+                          f'<td style="background:#DBEAFE;font-weight:900;color:#0F2552;">{sec_total}</td>'
+                          f'<td style="background:#DCFCE7;font-weight:900;color:#16A34A;">{sec_present}</td>'
+                          f'<td style="background:#FEE2E2;font-weight:900;color:#DC2626;">{sec_absent}</td>'
+                          f'<td style="background:#EEF2FF;"></td></tr>')
     body_rows += (f'<tr style="background:#F1F5F9;">'
-                  f'<td colspan="2" style="text-align:right;font-weight:900;color:#DC2626;">الإجمالي العام لعدد الطلاب المرصودين</td>'
-                  f'<td colspan="2" style="background:#FEE2E2;font-weight:900;color:#DC2626;">{grand_total} طالب</td></tr>')
+                  f'<td colspan="2" style="text-align:right;font-weight:900;color:#0F2552;">الإجمالي العام</td>'
+                  f'<td style="background:#E0E7FF;font-weight:900;color:#0F2552;">{grand_total}</td>'
+                  f'<td style="background:#DCFCE7;font-weight:900;color:#16A34A;">{grand_present}</td>'
+                  f'<td style="background:#FEE2E2;font-weight:900;color:#DC2626;">{grand_absent}</td>'
+                  f'<td style="background:#F1F5F9;"></td></tr>')
 
     html_code = f"""<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -853,7 +871,7 @@ th {{ background:#0F2552; color:white; font-weight:700; }}
 </div>
 <table>
 <thead>
-<tr><th>الحصة</th><th>اسم المعلم</th><th>عدد الطلاب</th><th>#</th></tr>
+<tr><th>الحصة</th><th>اسم المعلم</th><th>عدد الطلاب</th><th>الحاضرون</th><th>الغائبون</th><th>#</th></tr>
 </thead>
 <tbody>
 {body_rows}
@@ -1088,9 +1106,11 @@ else:
                             continue
                         _teachers = "، ".join(sorted({str(t).strip() for t in _sub['اسم المعلم'].tolist() if str(t).strip()})) or "غير محدد"
                         _cnt = int(_sub['رقم الطالب'].nunique())
-                        pc_rows.append({"الصف": _g, "الفصل": _s, "الحصة": _p, "اسم المعلم": _teachers, "عدد الطلاب": _cnt})
+                        _present = int(_sub[_sub['الحالة'] == 'حاضر']['رقم الطالب'].nunique())
+                        _absent = int(_sub[_sub['الحالة'] == 'غائب']['رقم الطالب'].nunique())
+                        pc_rows.append({"الصف": _g, "الفصل": _s, "الحصة": _p, "اسم المعلم": _teachers, "عدد الطلاب": _cnt, "الحاضرون": _present, "الغائبون": _absent})
 
-            df_pc_table = pd.DataFrame(pc_rows, columns=["الصف", "الفصل", "الحصة", "اسم المعلم", "عدد الطلاب"])
+            df_pc_table = pd.DataFrame(pc_rows, columns=["الصف", "الفصل", "الحصة", "اسم المعلم", "عدد الطلاب", "الحاضرون", "الغائبون"])
             st.markdown(f"#### 📊 جدول الحصص والمعلمين وعدد الطلاب لكل فصل ({pc_label}):")
             if pc_rows:
                 st.dataframe(df_pc_table, use_container_width=True)
