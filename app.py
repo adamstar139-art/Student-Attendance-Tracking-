@@ -885,7 +885,7 @@ th {{ background:#0F2552; color:white; font-weight:700; }}
     return html_code
 
 def generate_charts_report_html(counts_rows, report_label, hijri_label):
-    """يولّد تقرير HTML مستقل برسوم أعمدة (حاضر/غائب) لكل صف وفصل — CSS نقي مدمج قابل للطباعة."""
+    """يولّد تقرير HTML مستقل برسوم أعمدة (حاضر/غائب) لكل حصة ضمن كل فصل وصف — CSS نقي مدمج قابل للطباعة."""
     grades_order = []
     grouped = {}
     for r in counts_rows:
@@ -895,37 +895,40 @@ def generate_charts_report_html(counts_rows, report_label, hijri_label):
             grouped[g] = {}
             grades_order.append(g)
         if s not in grouped[g]:
-            grouped[g][s] = {"present": 0, "absent": 0, "total": 0}
-        grouped[g][s]["present"] += int(r.get("الحاضرون", 0))
-        grouped[g][s]["absent"] += int(r.get("الغائبون", 0))
-        grouped[g][s]["total"] += int(r.get("عدد الطلاب", 0))
+            grouped[g][s] = []
+        grouped[g][s].append({
+            "period": r.get("الحصة", ""),
+            "present": int(r.get("الحاضرون", 0)),
+            "absent": int(r.get("الغائبون", 0)),
+        })
 
     charts_html = ""
     if not counts_rows:
         charts_html = '<div style="text-align:center;color:#64748B;padding:40px;font-weight:700;">لا توجد بيانات مرصودة ضمن النطاق المحدد.</div>'
     for g in grades_order:
-        secs = grouped[g]
-        max_val = max([max(v["present"], v["absent"]) for v in secs.values()] + [1])
-        g_present = sum(v["present"] for v in secs.values())
-        g_absent = sum(v["absent"] for v in secs.values())
-        bars = ""
-        for s, v in secs.items():
-            ph = int(round(v["present"] / max_val * 170)) if max_val else 0
-            ah = int(round(v["absent"] / max_val * 170)) if max_val else 0
-            ph = max(ph, 2) if v["present"] > 0 else 1
-            ah = max(ah, 2) if v["absent"] > 0 else 1
-            bars += (f'<div class="group">'
-                     f'<div class="bars">'
-                     f'<div class="bar-wrap"><span class="val vp">{v["present"]}</span>'
-                     f'<div class="bar present" style="height:{ph}px;"></div></div>'
-                     f'<div class="bar-wrap"><span class="val va">{v["absent"]}</span>'
-                     f'<div class="bar absent" style="height:{ah}px;"></div></div>'
-                     f'</div>'
-                     f'<div class="xlabel">{s}</div></div>')
-        charts_html += (f'<div class="chart-card">'
-                        f'<div class="chart-head"><h3>🏫 {g}</h3>'
-                        f'<span class="chart-sum">حاضر: <b style="color:#16A34A;">{g_present}</b> &nbsp;|&nbsp; غائب: <b style="color:#DC2626;">{g_absent}</b></span></div>'
-                        f'<div class="chart">{bars}</div></div>')
+        charts_html += (f'<div class="grade-title">🏫 {g}</div>')
+        for s, periods in grouped[g].items():
+            max_val = max([max(p["present"], p["absent"]) for p in periods] + [1])
+            sec_present = sum(p["present"] for p in periods)
+            sec_absent = sum(p["absent"] for p in periods)
+            bars = ""
+            for p in periods:
+                ph = int(round(p["present"] / max_val * 160)) if max_val else 0
+                ah = int(round(p["absent"] / max_val * 160)) if max_val else 0
+                ph = max(ph, 2) if p["present"] > 0 else 1
+                ah = max(ah, 2) if p["absent"] > 0 else 1
+                bars += (f'<div class="group">'
+                         f'<div class="bars">'
+                         f'<div class="bar-wrap"><span class="val vp">{p["present"]}</span>'
+                         f'<div class="bar present" style="height:{ph}px;"></div></div>'
+                         f'<div class="bar-wrap"><span class="val va">{p["absent"]}</span>'
+                         f'<div class="bar absent" style="height:{ah}px;"></div></div>'
+                         f'</div>'
+                         f'<div class="xlabel">{p["period"]}</div></div>')
+            charts_html += (f'<div class="chart-card">'
+                            f'<div class="chart-head"><h3>🚪 الفصل {s} — {g}</h3>'
+                            f'<span class="chart-sum">حاضر: <b style="color:#16A34A;">{sec_present}</b> &nbsp;|&nbsp; غائب: <b style="color:#DC2626;">{sec_absent}</b></span></div>'
+                            f'<div class="chart">{bars}</div></div>')
 
     html_code = f"""<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -942,8 +945,8 @@ h4 {{ color:#4B5563; margin:5px; font-weight:700; font-size:16px; }}
 .legend {{ text-align:center; margin-bottom:18px; font-weight:700; font-size:13px; }}
 .legend span {{ display:inline-block; margin:0 10px; }}
 .legend i {{ display:inline-block; width:14px; height:14px; border-radius:3px; vertical-align:middle; margin-left:5px; }}
-.chart-card {{ background:#FFFFFF; border:1px solid #E2E8F0; border-radius:14px; padding:18px 18px 10px; margin-bottom:20px; box-shadow:0 2px 10px rgba(15,37,82,0.06); break-inside:avoid; }}
-.chart-head {{ display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #EEF2FF; padding-bottom:8px; margin-bottom:14px; }}
+.grade-title {{ background:#0F2552; color:#FFFFFF; font-weight:800; font-size:17px; padding:10px 16px; border-radius:10px; margin:22px 0 12px; }}
+.chart-card {{ background:#FFFFFF; border:1px solid #E2E8F0; border-radius:14px; padding:18px 18px 10px; margin-bottom:20px; box-shadow:0 2px 10px rgba(15,37,82,0.06); break-inside:avoid; }}.chart-head {{ display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #EEF2FF; padding-bottom:8px; margin-bottom:14px; }}
 .chart-head h3 {{ margin:0; color:#0F2552; font-weight:800; font-size:17px; }}
 .chart-sum {{ font-size:13px; color:#475569; font-weight:700; }}
 .chart {{ display:flex; align-items:flex-end; justify-content:space-around; gap:14px; min-height:220px; padding:10px 4px 0; border-bottom:2px solid #CBD5E1; flex-wrap:wrap; }}
@@ -1232,20 +1235,19 @@ else:
                 for _r in pc_rows:
                     _gg = _r["الصف"]
                     _ss = _r["الفصل"]
-                    if _gg not in _ch_grouped:
-                        _ch_grouped[_gg] = {}
-                        _ch_order.append(_gg)
-                    if _ss not in _ch_grouped[_gg]:
-                        _ch_grouped[_gg][_ss] = {"حاضر": 0, "غائب": 0}
-                    _ch_grouped[_gg][_ss]["حاضر"] += int(_r.get("الحاضرون", 0))
-                    _ch_grouped[_gg][_ss]["غائب"] += int(_r.get("الغائبون", 0))
-                st.markdown(f"#### 📈 أعمدة الحضور والغياب ({pc_label}):")
-                for _gg in _ch_order:
-                    st.markdown(f"**🏫 {_gg}**")
-                    _chart_df = pd.DataFrame([
-                        {"الفصل": _ss, "حاضر": _vv["حاضر"], "غائب": _vv["غائب"]}
-                        for _ss, _vv in _ch_grouped[_gg].items()
-                    ]).set_index("الفصل")
+                    _key = (_gg, _ss)
+                    if _key not in _ch_grouped:
+                        _ch_grouped[_key] = []
+                        _ch_order.append(_key)
+                    _ch_grouped[_key].append({
+                        "الحصة": _r.get("الحصة", ""),
+                        "حاضر": int(_r.get("الحاضرون", 0)),
+                        "غائب": int(_r.get("الغائبون", 0)),
+                    })
+                st.markdown(f"#### 📈 أعمدة الحضور والغياب لكل حصة ({pc_label}):")
+                for (_gg, _ss) in _ch_order:
+                    st.markdown(f"**🚪 الفصل {_ss} — {_gg}**")
+                    _chart_df = pd.DataFrame(_ch_grouped[(_gg, _ss)]).set_index("الحصة")
                     st.bar_chart(_chart_df, color=["#DC2626", "#16A34A"])
             else:
                 st.info("لا توجد بيانات مرصودة لرسمها ضمن النطاق المحدد.")
