@@ -246,6 +246,51 @@ def get_active_students_db():
     return st_db
 
 # =========================================================
+# إدارة المعلمين (إضافة معلم جديد وحفظه بشكل دائم)
+# =========================================================
+@st.cache_data(ttl=5, show_spinner=False)
+def _fetch_custom_teachers_rows():
+    sb = get_supabase()
+    if sb is None:
+        return []
+    try:
+        res = sb.table("thaghr_custom_teachers").select(
+            "teacher_name, password"
+        ).limit(50000).execute()
+        return res.data or []
+    except Exception:
+        return []
+
+def add_teacher_db(teacher_name, password):
+    sb = get_supabase()
+    if sb is None:
+        st.error("❌ لم يتم الاتصال بقاعدة البيانات. تعذّر حفظ المعلم.")
+        return False
+    try:
+        sb.table("thaghr_custom_teachers").upsert({
+            "teacher_name": str(teacher_name).strip(),
+            "password": str(password).strip(),
+        }).execute()
+        st.cache_data.clear()
+        return True
+    except Exception as ex:
+        st.error(f"خطأ أثناء إضافة المعلم: {ex}")
+        return False
+
+def get_active_teachers():
+    """تدمج المعلمين الأساسيين مع المضافين حديثاً."""
+    names = list(TEACHERS_LIST)
+    pw = dict(TEACHER_PASSWORDS)
+    for row in _fetch_custom_teachers_rows():
+        nm = str(row.get("teacher_name", "")).strip()
+        if not nm:
+            continue
+        if nm not in names:
+            names.append(nm)
+        pw[nm] = str(row.get("password", "")).strip() or pw.get(nm, "101")
+    return names, pw
+
+# =========================================================
 # قوائم الطلاب المحفورة
 # =========================================================
 STUDENTS_DB = {
@@ -868,13 +913,14 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
     st.markdown("### 📋 رصد حضور وغياب الطلاب")
     students_db = get_active_students_db()
 
+    teachers_active, teacher_pw_active = get_active_teachers()
     col_t, col_pin = st.columns([3, 2])
     with col_t:
-        teacher_name = st.selectbox("اسم المعلم:", TEACHERS_LIST)
+        teacher_name = st.selectbox("اسم المعلم:", teachers_active)
     with col_pin:
         teacher_pin = st.text_input("🔑 كلمة المرور (3 أرقام):", type="password", key=f"t_pin_{teacher_name}", max_chars=3)
 
-    correct_pin = TEACHER_PASSWORDS.get(teacher_name, "101")
+    correct_pin = teacher_pw_active.get(teacher_name, "101")
 
     if teacher_pin == correct_pin:
         st.success(f"✅ أهلاً بك {teacher_name}! تم التحقق من كلمة المرور بنجاح.")
@@ -1106,6 +1152,28 @@ else:
 
         with tab_teachers:
             st.markdown("### 👨‍🏫 إحصائية وحالة حضور وغياب كادر المعلمين")
+
+            teachers_list_active, _ = get_active_teachers()
+
+            with st.expander("➕ إضافة معلم جديد"):
+                st.info("💡 أضف معلماً جديداً باسمه وكلمة مروره؛ سيُحفظ بشكل دائم ويظهر في تسجيل الدخول والإحصائيات.")
+                c_add1, c_add2 = st.columns([3, 2])
+                new_teacher_name = c_add1.text_input("اسم المعلم الجديد:", key="new_teacher_name_input")
+                new_teacher_pw = c_add2.text_input("🔑 كلمة المرور (3 أرقام):", key="new_teacher_pw_input", max_chars=3)
+                if st.button("➕ إضافة المعلم", type="primary", key="btn_add_teacher"):
+                    nm = (new_teacher_name or "").strip()
+                    pw = (new_teacher_pw or "").strip()
+                    if not nm:
+                        st.warning("⚠️ يرجى إدخال اسم المعلم.")
+                    elif len(pw) != 3 or not pw.isdigit():
+                        st.warning("⚠️ يرجى إدخال كلمة مرور مكوّنة من 3 أرقام.")
+                    elif nm in teachers_list_active:
+                        st.warning(f"⚠️ المعلم ({nm}) موجود مسبقاً.")
+                    else:
+                        if add_teacher_db(nm, pw):
+                            st.success(f"✅ تمت إضافة المعلم ({nm}) بنجاح!")
+                            st.rerun()
+
             teacher_session_counts = {}
             if not df.empty:
                 t_grouped = df.groupby('اسم المعلم')['الحصة'].nunique()
@@ -1115,7 +1183,7 @@ else:
             teachers_summary_data = {}
             saved_teachers_dict = {row['اسم المعلم']: row['الحالة'] for row in teacher_logs_db if row['التاريخ'] == str(date.today())}
 
-            for t_name in TEACHERS_LIST:
+            for t_name in teachers_list_active:
                 c_name_t, c_status_t, c_info_t = st.columns([2.5, 3, 2.5])
                 c_name_t.markdown(f"**{t_name}**")
                 cur_status = saved_teachers_dict.get(t_name, "حاضر")
@@ -1149,7 +1217,7 @@ else:
                 edit_date = st.date_input("اختر تاريخ التعديل:", date.today(), key="edit_t_date")
                 today_logs = [r for r in teacher_logs_db if r['التاريخ'] == str(edit_date)]
                 if not today_logs:
-                    today_logs = [{"التاريخ": str(edit_date), "التاريخ_الهجري": gregorian_to_hijri_approx(edit_date), "اسم المعلم": t, "الحالة": "حاضر", "الحصص المرصودة": teacher_session_counts.get(t, 0), "ملاحظات": "-"} for t in TEACHERS_LIST]
+                    today_logs = [{"التاريخ": str(edit_date), "التاريخ_الهجري": gregorian_to_hijri_approx(edit_date), "اسم المعلم": t, "الحالة": "حاضر", "الحصص المرصودة": teacher_session_counts.get(t, 0), "ملاحظات": "-"} for t in teachers_list_active]
                 updated_logs = []
                 for t_log in today_logs:
                     c1, c2, c3 = st.columns(3)
@@ -1179,7 +1247,7 @@ else:
                 st.session_state['search_teacher_started'] = True
             if st.session_state.get('search_teacher_started', False):
                 teacher_summary_list = []
-                for t in TEACHERS_LIST:
+                for t in teachers_list_active:
                     t_logs = []
                     for r in teacher_logs_db:
                         if r['اسم المعلم'] == t:
