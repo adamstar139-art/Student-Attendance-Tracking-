@@ -960,13 +960,15 @@ h4 {{ color:#4B5563; margin:5px; font-weight:700; font-size:16px; }}
 def generate_landscape_grid_html(counts_rows, report_label, hijri_label):
     """تقرير عرضي (Landscape) يجمع كل فصول المدرسة في صفحة واحدة:
     صفوف = الفصول، أعمدة = الحصص، وكل خلية تظهر اسم المعلم وعدد الحضور."""
-    periods_order = [f"الحصة {i}" for i in range(1, 8)]
+    import re as _re_grid
     rows_order = []
     grid = {}
+    _periods_seen = set()
     for r in counts_rows:
-        g = r.get("الصف", "")
-        s = r.get("الفصل", "")
-        p = r.get("الحصة", "")
+        g = str(r.get("الصف", "")).strip()
+        s = str(r.get("الفصل", "")).strip()
+        p = str(r.get("الحصة", "")).strip()
+        _periods_seen.add(p)
         key = (g, s)
         if key not in grid:
             grid[key] = {}
@@ -976,6 +978,11 @@ def generate_landscape_grid_html(counts_rows, report_label, hijri_label):
             "present": int(r.get("الحاضرون", 0)),
             "absent": int(r.get("الغائبون", 0)),
         }
+
+    def _pk(pname):
+        _m = _re_grid.search(r"\d+", str(pname))
+        return int(_m.group()) if _m else 999
+    periods_order = sorted(_periods_seen, key=_pk) if _periods_seen else [f"الحصة {i}" for i in range(1, 8)]
 
     head_cells = "".join(f'<th>{p}</th>' for p in periods_order)
     body_rows = ""
@@ -1252,21 +1259,31 @@ else:
 
             _pc_db = get_active_students_db()
             pc_rows = []
-            for _g in _pc_grades_order:
-                if _g not in _pc_db:
-                    continue
-                for _s in list(_pc_db[_g].keys()):
-                    for _p in _pc_periods_order:
-                        if df_pc.empty:
-                            continue
-                        _sub = df_pc[(df_pc['الصف'] == _g) & (df_pc['الفصل'] == _s) & (df_pc['الحصة'] == _p)]
-                        if _sub.empty:
-                            continue
-                        _teachers = "، ".join(sorted({str(t).strip() for t in _sub['اسم المعلم'].tolist() if str(t).strip()})) or "غير محدد"
-                        _cnt = int(_sub['رقم الطالب'].nunique())
-                        _present = int(_sub[_sub['الحالة'] == 'حاضر']['رقم الطالب'].nunique())
-                        _absent = int(_sub[_sub['الحالة'] == 'غائب']['رقم الطالب'].nunique())
-                        pc_rows.append({"الصف": _g, "الفصل": _s, "الحصة": _p, "اسم المعلم": _teachers, "عدد الطلاب": _cnt, "الحاضرون": _present, "الغائبون": _absent})
+            if not df_pc.empty:
+                import re as _re_pc
+                _dfp = df_pc.copy()
+                for _c in ['الصف', 'الفصل', 'الحصة', 'الحالة', 'اسم المعلم', 'رقم الطالب']:
+                    if _c in _dfp.columns:
+                        _dfp[_c] = _dfp[_c].astype(str).str.strip()
+
+                def _period_key(pname):
+                    _m = _re_pc.search(r"\d+", str(pname))
+                    return int(_m.group()) if _m else 999
+
+                def _grade_key(gname):
+                    return _pc_grades_order.index(gname) if gname in _pc_grades_order else 999
+
+                _combos = _dfp[['الصف', 'الفصل', 'الحصة']].drop_duplicates().values.tolist()
+                _combos.sort(key=lambda x: (_grade_key(str(x[0])), str(x[1]), _period_key(x[2])))
+                for _g, _s, _p in _combos:
+                    _sub = _dfp[(_dfp['الصف'] == _g) & (_dfp['الفصل'] == _s) & (_dfp['الحصة'] == _p)]
+                    if _sub.empty:
+                        continue
+                    _teachers = "، ".join(sorted({str(t).strip() for t in _sub['اسم المعلم'].tolist() if str(t).strip()})) or "غير محدد"
+                    _cnt = int(_sub['رقم الطالب'].nunique())
+                    _present = int(_sub[_sub['الحالة'] == 'حاضر']['رقم الطالب'].nunique())
+                    _absent = int(_sub[_sub['الحالة'] == 'غائب']['رقم الطالب'].nunique())
+                    pc_rows.append({"الصف": _g, "الفصل": _s, "الحصة": _p, "اسم المعلم": _teachers, "عدد الطلاب": _cnt, "الحاضرون": _present, "الغائبون": _absent})
 
             df_pc_table = pd.DataFrame(pc_rows, columns=["الصف", "الفصل", "الحصة", "اسم المعلم", "عدد الطلاب", "الحاضرون", "الغائبون"])
             st.markdown(f"#### 📊 جدول الحصص والمعلمين وعدد الطلاب لكل فصل ({pc_label}):")
