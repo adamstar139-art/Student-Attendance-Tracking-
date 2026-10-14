@@ -53,13 +53,24 @@ def _fetch_student_rows():
     sb = get_supabase()
     if sb is None:
         return []
+    all_rows = []
+    page_size = 1000
+    page = 0
     try:
-        res = sb.table("thaghr_student_attendance").select(
-            "date, teacher_name, grade, section, period, student_id, student_name, status"
-        ).order("id", desc=True).limit(50000).execute()
-        return res.data or []
+        while True:
+            res = sb.table("thaghr_student_attendance").select(
+                "date, teacher_name, grade, section, period, student_id, student_name, status"
+            ).order("id", desc=True).range(page * page_size, page * page_size + page_size - 1).execute()
+            batch = res.data or []
+            all_rows.extend(batch)
+            if len(batch) < page_size:
+                break
+            page += 1
+            if page > 500:
+                break
+        return all_rows
     except Exception:
-        return []
+        return all_rows
 
 def load_student_attendance_db():
     rows = _fetch_student_rows()
@@ -135,13 +146,24 @@ def _fetch_teacher_rows():
     sb = get_supabase()
     if sb is None:
         return []
+    all_rows = []
+    page_size = 1000
+    page = 0
     try:
-        res = sb.table("thaghr_teacher_daily_logs").select(
-            "date, hijri_date, teacher_name, status, sessions_count, notes"
-        ).order("id", desc=True).limit(50000).execute()
-        return res.data or []
+        while True:
+            res = sb.table("thaghr_teacher_daily_logs").select(
+                "date, hijri_date, teacher_name, status, sessions_count, notes"
+            ).order("id", desc=True).range(page * page_size, page * page_size + page_size - 1).execute()
+            batch = res.data or []
+            all_rows.extend(batch)
+            if len(batch) < page_size:
+                break
+            page += 1
+            if page > 500:
+                break
+        return all_rows
     except Exception:
-        return []
+        return all_rows
 
 def load_teacher_logs_from_db():
     rows = _fetch_teacher_rows()
