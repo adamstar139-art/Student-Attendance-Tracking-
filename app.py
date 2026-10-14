@@ -798,9 +798,6 @@ def generate_period_counts_report_html(counts_rows, report_label, hijri_label):
         grouped[g][s].append(r)
 
     seq = 0
-    grand_total = 0
-    grand_present = 0
-    grand_absent = 0
     if not counts_rows:
         body_rows = '<tr><td colspan="6" style="color:#64748B;padding:16px;">لا توجد بيانات مرصودة ضمن النطاق المحدد.</td></tr>'
     for g in grades_order:
@@ -809,38 +806,17 @@ def generate_period_counts_report_html(counts_rows, report_label, hijri_label):
         for s, rows in grouped[g].items():
             body_rows += (f'<tr style="background:#E0E7FF;">'
                           f'<td colspan="6" style="text-align:right;font-weight:700;color:#0F2552;">🚪 {s}</td></tr>')
-            sec_total = 0
-            sec_present = 0
-            sec_absent = 0
             for r in rows:
                 seq += 1
                 cnt = int(r.get("عدد الطلاب", 0))
                 pres = int(r.get("الحاضرون", 0))
                 absn = int(r.get("الغائبون", 0))
-                sec_total += cnt
-                sec_present += pres
-                sec_absent += absn
                 body_rows += (f'<tr><td style="font-weight:700;color:#1E293B;">{r.get("الحصة", "")}</td>'
                               f'<td style="text-align:right;color:#1E293B;font-weight:600;">{r.get("اسم المعلم", "غير محدد")}</td>'
                               f'<td style="font-weight:800;color:#0F2552;">{cnt}</td>'
                               f'<td style="font-weight:800;color:#16A34A;">{pres}</td>'
                               f'<td style="font-weight:800;color:#DC2626;">{absn}</td>'
                               f'<td style="color:#94A3B8;">{seq}</td></tr>')
-            grand_total += sec_total
-            grand_present += sec_present
-            grand_absent += sec_absent
-            body_rows += (f'<tr style="background:#EEF2FF;">'
-                          f'<td colspan="2" style="text-align:right;font-weight:800;color:#0F2552;">إجمالي {s}</td>'
-                          f'<td style="background:#DBEAFE;font-weight:900;color:#0F2552;">{sec_total}</td>'
-                          f'<td style="background:#DCFCE7;font-weight:900;color:#16A34A;">{sec_present}</td>'
-                          f'<td style="background:#FEE2E2;font-weight:900;color:#DC2626;">{sec_absent}</td>'
-                          f'<td style="background:#EEF2FF;"></td></tr>')
-    body_rows += (f'<tr style="background:#F1F5F9;">'
-                  f'<td colspan="2" style="text-align:right;font-weight:900;color:#0F2552;">الإجمالي العام</td>'
-                  f'<td style="background:#E0E7FF;font-weight:900;color:#0F2552;">{grand_total}</td>'
-                  f'<td style="background:#DCFCE7;font-weight:900;color:#16A34A;">{grand_present}</td>'
-                  f'<td style="background:#FEE2E2;font-weight:900;color:#DC2626;">{grand_absent}</td>'
-                  f'<td style="background:#F1F5F9;"></td></tr>')
 
     html_code = f"""<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -909,8 +885,6 @@ def generate_charts_report_html(counts_rows, report_label, hijri_label):
         charts_html += (f'<div class="grade-title">🏫 {g}</div>')
         for s, periods in grouped[g].items():
             max_val = max([max(p["present"], p["absent"]) for p in periods] + [1])
-            sec_present = sum(p["present"] for p in periods)
-            sec_absent = sum(p["absent"] for p in periods)
             bars = ""
             for p in periods:
                 ph = int(round(p["present"] / max_val * 160)) if max_val else 0
@@ -926,8 +900,7 @@ def generate_charts_report_html(counts_rows, report_label, hijri_label):
                          f'</div>'
                          f'<div class="xlabel">{p["period"]}</div></div>')
             charts_html += (f'<div class="chart-card">'
-                            f'<div class="chart-head"><h3>🚪 الفصل {s} — {g}</h3>'
-                            f'<span class="chart-sum">حاضر: <b style="color:#16A34A;">{sec_present}</b> &nbsp;|&nbsp; غائب: <b style="color:#DC2626;">{sec_absent}</b></span></div>'
+                            f'<div class="chart-head"><h3>🚪 الفصل {s} — {g}</h3></div>'
                             f'<div class="chart">{bars}</div></div>')
 
     html_code = f"""<!DOCTYPE html>
@@ -977,6 +950,91 @@ h4 {{ color:#4B5563; margin:5px; font-weight:700; font-size:16px; }}
     <span><i style="background:#DC2626;"></i> الطلاب الغائبون</span>
 </div>
 {charts_html}
+<div class="footer">
+    تم توليد هذا التقرير آلياً من نظام تحضير متوسطة الثغر النموذجية
+</div>
+</body>
+</html>"""
+    return html_code
+
+def generate_landscape_grid_html(counts_rows, report_label, hijri_label):
+    """تقرير عرضي (Landscape) يجمع كل فصول المدرسة في صفحة واحدة:
+    صفوف = الفصول، أعمدة = الحصص، وكل خلية تظهر اسم المعلم وعدد الحضور."""
+    periods_order = [f"الحصة {i}" for i in range(1, 8)]
+    rows_order = []
+    grid = {}
+    for r in counts_rows:
+        g = r.get("الصف", "")
+        s = r.get("الفصل", "")
+        p = r.get("الحصة", "")
+        key = (g, s)
+        if key not in grid:
+            grid[key] = {}
+            rows_order.append(key)
+        grid[key][p] = {
+            "teacher": r.get("اسم المعلم", "—"),
+            "present": int(r.get("الحاضرون", 0)),
+            "absent": int(r.get("الغائبون", 0)),
+        }
+
+    head_cells = "".join(f'<th>{p}</th>' for p in periods_order)
+    body_rows = ""
+    if not counts_rows:
+        body_rows = f'<tr><td colspan="{len(periods_order)+1}" style="padding:18px;color:#64748B;">لا توجد بيانات مرصودة ضمن النطاق المحدد.</td></tr>'
+    for (g, s) in rows_order:
+        cells = ""
+        for p in periods_order:
+            cell = grid[(g, s)].get(p)
+            if cell:
+                cells += (f'<td class="cell"><div class="tch">{cell["teacher"]}</div>'
+                          f'<div class="cnt"><span class="pres">حاضر {cell["present"]}</span>'
+                          f'<span class="abs">غائب {cell["absent"]}</span></div></td>')
+            else:
+                cells += '<td class="cell empty">—</td>'
+        body_rows += (f'<tr><td class="rowhead"><b>{s}</b><br><small>{g}</small></td>{cells}</tr>')
+
+    html_code = f"""<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>تقرير الحصص المجمّع — كل الفصول</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+@page {{ size: A4 landscape; margin: 10mm; }}
+body {{ font-family:'Cairo',sans-serif; text-align:right; padding:18px; background:#FFF; color:#1E293B; direction:rtl; }}
+.header {{ text-align:center; border-bottom:3px solid #0F2552; padding-bottom:10px; margin-bottom:12px; }}
+h2 {{ color:#0F2552; margin:4px; font-weight:800; font-size:20px; }}
+h4 {{ color:#4B5563; margin:4px; font-weight:700; font-size:14px; }}
+.meta {{ text-align:center; color:#64748B; font-size:12px; margin-bottom:12px; font-weight:600; }}
+table {{ width:100%; border-collapse:collapse; table-layout:fixed; }}
+th, td {{ border:1px solid #CBD5E1; padding:6px 4px; text-align:center; font-size:11px; vertical-align:middle; }}
+th {{ background:#0F2552; color:#FFFFFF; font-weight:700; font-size:12px; }}
+.rowhead {{ background:#E0E7FF; color:#0F2552; font-weight:800; font-size:12px; width:90px; }}
+.rowhead small {{ color:#475569; font-weight:600; font-size:10px; }}
+.cell .tch {{ font-weight:700; color:#1E293B; margin-bottom:3px; min-height:14px; }}
+.cell .cnt {{ display:flex; flex-direction:column; gap:2px; align-items:center; }}
+.pres {{ color:#16A34A; font-weight:800; }}
+.abs {{ color:#DC2626; font-weight:800; }}
+.cell.empty {{ color:#CBD5E1; font-weight:700; }}
+.footer {{ margin-top:16px; text-align:center; color:#94A3B8; font-size:11px; border-top:1px solid #E2E8F0; padding-top:8px; }}
+</style>
+</head>
+<body>
+<div class="header">
+    <h2>🏫 مدرسة متوسطة الثغر النموذجية</h2>
+    <h4>التقرير المجمّع لكل فصول المدرسة حسب الحصص (المعلم / الحضور)</h4>
+</div>
+<div class="meta">
+    📅 النطاق: {report_label} &nbsp;|&nbsp; 🌙 التاريخ الهجري: {hijri_label}
+</div>
+<table>
+<thead>
+<tr><th class="rowhead" style="background:#0F2552;color:#FFF;">الفصل / الصف</th>{head_cells}</tr>
+</thead>
+<tbody>
+{body_rows}
+</tbody>
+</table>
 <div class="footer">
     تم توليد هذا التقرير آلياً من نظام تحضير متوسطة الثغر النموذجية
 </div>
@@ -1259,6 +1317,18 @@ else:
                 file_name=f"رسوم_بيانية_الحضور_والغياب_{date.today()}.html",
                 mime="text/html",
                 key="btn_export_charts_html",
+                use_container_width=True
+            )
+
+        with st.expander("🖨️ طباعة التقرير المجمّع لكل فصول المدرسة (عرضي / صفحة واحدة)", expanded=False):
+            st.info("📌 تقرير عرضي (Landscape) يجمع كل فصول المدرسة في صفحة واحدة؛ صفوف = الفصول، أعمدة = الحصص، وكل خلية توضّح اسم المعلم وعدد الحضور.")
+            grid_html = generate_landscape_grid_html(pc_rows, pc_label, pc_hijri)
+            st.download_button(
+                label="🖨️ طباعة التقرير المجمّع العرضي (HTML / PDF)",
+                data=grid_html.encode('utf-8'),
+                file_name=f"التقرير_المجمع_لكل_الفصول_{date.today()}.html",
+                mime="text/html",
+                key="btn_export_landscape_grid",
                 use_container_width=True
             )
 
