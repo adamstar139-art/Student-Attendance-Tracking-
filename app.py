@@ -5,42 +5,6 @@ import io
 import copy
 
 # =========================================================
-# شعار المدرسة (مضمّن Base64 داخل الملف عبر وحدة logo_data — لا ينكسر عند الرفع/التنزيل)
-# =========================================================
-try:
-    from logo_data import load_logo_b64
-    _LOGO_B64 = load_logo_b64() or ""
-except Exception:
-    _LOGO_B64 = ""
-
-def _logo_data_uri():
-    """يعيد رابط بيانات (data URI) للشعار المضمّن، أو سلسلة فارغة إن لم يتوفر."""
-    return f"data:image/png;base64,{_LOGO_B64}" if _LOGO_B64 else ""
-
-def _logo_img_html(height=72, margin_bottom=8):
-    """وسم <img> جاهز لترويسات تقارير HTML/PDF (يرجع فارغًا إذا تعذر تحميل الشعار)."""
-    uri = _logo_data_uri()
-    if not uri:
-        return ""
-    return f'<img src="{uri}" alt="شعار مدارس الثغر النموذجية" style="height:{height}px; width:auto; margin-bottom:{margin_bottom}px; display:inline-block;" />'
-
-def _report_signature_html():
-    """توقيع أسماء قيادات المدرسة أسفل كل تقرير (يُدرج قبل </body>)."""
-    return (
-        '<div style="margin-top:26px; border-top:2px solid #0F2552; padding-top:12px; '
-        'text-align:center; font-family:\'Cairo\',sans-serif; color:#1E293B;">'
-        '<div style="font-weight:800; font-size:14px; color:#0F2552; margin-bottom:6px;">'
-        '🏫 قيادة مدارس الثغر النموذجية الأهلية</div>'
-        '<div style="font-size:13px; font-weight:700; line-height:1.9;">'
-        'وكيل شؤون الطلاب: صالح بن عبدالله الدعجاني &nbsp;|&nbsp; '
-        'وكيل الشؤون التعليمية: محمد مبروك السيد &nbsp;|&nbsp; '
-        'مدير المدرسة: إبراهيم بن موسى التميمي</div>'
-        '<div style="font-size:12px; font-weight:700; color:#475569; margin-top:4px;">'
-        '💻 المسؤول التقني والمنصة: أ. محمد سامي السعيد</div>'
-        '</div>'
-    )
-
-# =========================================================
 # 0. ربط قاعدة البيانات السحابية الدائمة (Supabase Cloud)
 # =========================================================
 try:
@@ -694,23 +658,6 @@ div[role="radiogroup"] {
     font-weight: bold;
     display: inline-block;
 }
-
-/* 🎬 الشريط المتحرك الجانبي (أسماء القيادات) — على الجانب الأيمن */
-.thaghr-vmarquee { position: fixed; right: 6px; top: 90px; height: 72vh; width: 192px; background: linear-gradient(180deg, #0F172A 0%, #1E3A8A 100%); border-radius: 14px; box-shadow: 0 6px 18px rgba(30,58,138,.3); overflow: hidden; z-index: 9990; border: 1px solid #3B82F6; }
-.thaghr-vmarquee .vtitle { position: absolute; top: 0; left: 0; width: 100%; box-sizing: border-box; text-align: center; color: #FDE68A; font-weight: 800; font-size: 13px; padding: 8px 6px; background: rgba(15,23,42,.92); border-bottom: 1px solid rgba(255,255,255,.15); z-index: 2; }
-.thaghr-vtrack { position: absolute; top: 0; left: 0; width: 100%; box-sizing: border-box; padding: 0 8px; animation: thaghrVScroll 20s linear infinite; }
-.thaghr-vmarquee:hover .thaghr-vtrack { animation-play-state: paused; }
-.thaghr-vitem { text-align: center; line-height: 1.6; padding: 12px 4px; border-bottom: 1px dashed rgba(255,255,255,.14); }
-.thaghr-vitem .role { display: block; color: #A7F3D0; font-size: 11px; font-weight: 700; margin-bottom: 3px; }
-.thaghr-vitem .nm { display: block; color: #FFFFFF; font-size: 13px; font-weight: 800; }
-@keyframes thaghrVScroll { 0% { transform: translateY(74vh); } 100% { transform: translateY(-100%); } }
-@media (max-width: 820px) { .thaghr-vmarquee { width: 142px; height: 58vh; top: 72px; } .thaghr-vitem .nm { font-size: 12px; } }
-
-/* 🔘 أيقونة التحكم في إظهار/إخفاء الشريط الجانبي (تبريز زر Streamlit الأصلي) */
-[data-testid="collapsedControl"] { display: flex !important; align-items: center !important; justify-content: center !important; background: #1E3A8A !important; color: #FFFFFF !important; border-radius: 0 12px 12px 0 !important; box-shadow: 0 4px 12px rgba(30,58,138,.4) !important; padding: 8px !important; top: 14px !important; z-index: 10000 !important; opacity: 1 !important; }
-[data-testid="collapsedControl"] svg { width: 28px !important; height: 28px !important; color: #FFFFFF !important; fill: #FFFFFF !important; }
-[data-testid="collapsedControl"]:hover { background: #2563EB !important; }
-[data-testid="stSidebarCollapseButton"] svg, [data-testid="stSidebarCollapseButton"] button svg { width: 26px !important; height: 26px !important; color: #F8FAFC !important; fill: #F8FAFC !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -802,7 +749,6 @@ tr:nth-child(even) {{ background:#F8FAFC; }}
 </head>
 <body>
 <div class="header">
-    {_logo_img_html()}<br>
     <h2>🏫 مدرسة متوسطة الثغر النموذجية</h2>
     <h4>{report_title}</h4>
 </div>
@@ -814,7 +760,6 @@ tr:nth-child(even) {{ background:#F8FAFC; }}
 {rows_html}
 </tbody>
 </table>
-{_report_signature_html()}
 </body>
 </html>"""
     return html_code
@@ -847,7 +792,6 @@ tr:nth-child(even) {{ background:#F8FAFC; }}
 </head>
 <body>
 <div class="header">
-    {_logo_img_html()}<br>
     <h2>🏫 تقرير حضور وغياب المعلمين</h2>
     <p>الفترة من {start_d} إلى {end_d}</p>
 </div>
@@ -859,7 +803,6 @@ tr:nth-child(even) {{ background:#F8FAFC; }}
 {rows_html}
 </tbody>
 </table>
-{_report_signature_html()}
 </body>
 </html>"""
     return html_code
@@ -922,7 +865,6 @@ th {{ background:#0F2552; color:white; font-weight:700; }}
 </head>
 <body>
 <div class="header">
-    {_logo_img_html()}<br>
     <h2>🏫 مدرسة متوسطة الثغر النموذجية</h2>
     <h4>تقرير الحصص ومعلميها وعدد الطلاب المرصودين لكل فصل</h4>
 </div>
@@ -940,7 +882,6 @@ th {{ background:#0F2552; color:white; font-weight:700; }}
 <div class="footer">
     تم توليد هذا التقرير آلياً من نظام تحضير متوسطة الثغر النموذجية
 </div>
-{_report_signature_html()}
 </body>
 </html>"""
     return html_code
@@ -1031,7 +972,6 @@ h4 {{ color:#4B5563; margin:5px; font-weight:700; font-size:16px; }}
 </head>
 <body>
 <div class="header">
-    {_logo_img_html()}<br>
     <h2>🏫 مدرسة متوسطة الثغر النموذجية</h2>
     <h4>الرسوم البيانية للحضور والغياب والتأخر لكل صف وفصل</h4>
 </div>
@@ -1047,7 +987,6 @@ h4 {{ color:#4B5563; margin:5px; font-weight:700; font-size:16px; }}
 <div class="footer">
     تم توليد هذا التقرير آلياً من نظام تحضير متوسطة الثغر النموذجية
 </div>
-{_report_signature_html()}
 </body>
 </html>"""
     return html_code
@@ -1126,7 +1065,6 @@ th {{ background:#0F2552; color:#FFFFFF; font-weight:700; font-size:12px; }}
 </head>
 <body>
 <div class="header">
-    {_logo_img_html()}<br>
     <h2>🏫 مدرسة متوسطة الثغر النموذجية</h2>
     <h4>التقرير المجمّع لكل فصول المدرسة حسب الحصص (المعلم / الحضور)</h4>
 </div>
@@ -1144,7 +1082,6 @@ th {{ background:#0F2552; color:#FFFFFF; font-weight:700; font-size:12px; }}
 <div class="footer">
     تم توليد هذا التقرير آلياً من نظام تحضير متوسطة الثغر النموذجية
 </div>
-{_report_signature_html()}
 </body>
 </html>"""
     return html_code
@@ -1152,43 +1089,19 @@ th {{ background:#0F2552; color:#FFFFFF; font-weight:700; font-size:12px; }}
 # =========================================================
 # اختيار لوحة التحكم
 # =========================================================
-if _logo_data_uri():
-    st.sidebar.markdown(f"<div style='text-align:center; margin-bottom:10px;'><img src='{_logo_data_uri()}' alt='شعار مدارس الثغر النموذجية' style='max-width:160px; width:80%; height:auto;' /></div>", unsafe_allow_html=True)
 st.sidebar.title("📌 نظام المتابعة")
 st.sidebar.markdown("<div style='background:#1E293B; border-right:4px solid #3B82F6; border-radius:8px; padding:10px; margin-bottom:12px; font-weight:700; color:#F8FAFC;'>👇 اختر لوحة التحكم:</div>", unsafe_allow_html=True)
-
-# =========================================================
-# اختيار لوحة التحكم (داخل الشريط الجانبي فقط — كما في السابق)
-# =========================================================
 role = st.sidebar.radio(
     "اختر لوحة التحكم:",
     ["👨‍🏫 حساب المعلم (رصد الحضور)", "👔 حساب الوكيل والمدير (المتابعة والتصدير)"],
     label_visibility="collapsed"
 )
-
-# 🎬 الشريط المتحرك (أسماء القيادات) مع مفتاح الإظهار/الإخفاء
-if 'show_marquee' not in st.session_state:
-    st.session_state['show_marquee'] = True
-
-_mq_c1, _mq_c2 = st.columns([1.4, 3.6])
-with _mq_c1:
-    _mq_label = "🙈 إخفاء الشريط المتحرك" if st.session_state['show_marquee'] else "🎬 إظهار الشريط المتحرك"
-    if st.button(_mq_label, use_container_width=True, key="toggle_marquee_btn"):
-        st.session_state['show_marquee'] = not st.session_state['show_marquee']
-        st.rerun()
-
-if st.session_state['show_marquee']:
-    st.markdown("<div class='thaghr-vmarquee'><div class='vtitle'>🏫 قيادة مدارس الثغر</div><div class='thaghr-vtrack'><div class='thaghr-vitem'><span class='role'>مدير المدرسة</span><span class='nm'>إبراهيم بن موسى التميمي</span></div><div class='thaghr-vitem'><span class='role'>وكيل الشؤون التعليمية</span><span class='nm'>محمد مبروك السيد</span></div><div class='thaghr-vitem'><span class='role'>وكيل شؤون الطلاب</span><span class='nm'>صالح بن عبدالله الدعجاني</span></div><div class='thaghr-vitem'><span class='role'>المسؤول التقني والمنصة</span><span class='nm'>أ. محمد سامي السعيد</span></div></div></div>", unsafe_allow_html=True)
-
 st.write("")
 
 # =========================================================
 # 7. واجهة المعلم (رصد حضور الطلاب)
 # =========================================================
 if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
-
-    if _logo_data_uri():
-        st.markdown(f"<div style='text-align:center; margin-bottom:10px;'><img src='{_logo_data_uri()}' alt='شعار مدارس الثغر النموذجية' style='height:90px; width:auto;' /></div>", unsafe_allow_html=True)
 
     st.markdown("""
     <div style="
@@ -1296,9 +1209,6 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
 else:
     if 'admin_authenticated' not in st.session_state:
         st.session_state['admin_authenticated'] = False
-
-    if _logo_data_uri():
-        st.markdown(f"<div style='text-align:center; margin-bottom:10px;'><img src='{_logo_data_uri()}' alt='شعار مدارس الثغر النموذجية' style='height:90px; width:auto;' /></div>", unsafe_allow_html=True)
 
     if not st.session_state['admin_authenticated']:
         st.warning("🔒 هذه اللوحة مخصصة لإدارة المدرسة فقط. يرجى إدخال كلمة المرور للمتابعة:")
