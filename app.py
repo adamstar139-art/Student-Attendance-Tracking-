@@ -1118,11 +1118,46 @@ if _logo_data_uri():
     st.sidebar.markdown(f"<div style='text-align:center; margin-bottom:10px;'><img src='{_logo_data_uri()}' alt='شعار مدارس الثغر النموذجية' style='max-width:160px; width:80%; height:auto;' /></div>", unsafe_allow_html=True)
 st.sidebar.title("📌 نظام المتابعة")
 st.sidebar.markdown("<div style='background:#1E293B; border-right:4px solid #3B82F6; border-radius:8px; padding:10px; margin-bottom:12px; font-weight:700; color:#F8FAFC;'>👇 اختر لوحة التحكم:</div>", unsafe_allow_html=True)
-role = st.sidebar.radio(
+
+# =========================================================
+# اختيار لوحة التحكم — متاح دائمًا (أعلى الصفحة + الشريط الجانبي)
+# يحل مشكلة عدم العودة للوحة التحكم على الجوال عند إغلاق الشريط الجانبي
+# =========================================================
+_ROLE_OPTIONS = ["👨‍🏫 حساب المعلم (رصد الحضور)", "👔 حساب الوكيل والمدير (المتابعة والتصدير)"]
+if 'nav_role' not in st.session_state:
+    st.session_state['nav_role'] = _ROLE_OPTIONS[0]
+
+def _sync_role_from_main():
+    st.session_state['nav_role'] = st.session_state.get('nav_role_main', _ROLE_OPTIONS[0])
+
+def _sync_role_from_side():
+    st.session_state['nav_role'] = st.session_state.get('nav_role_side', _ROLE_OPTIONS[0])
+
+_cur_role_idx = _ROLE_OPTIONS.index(st.session_state['nav_role']) if st.session_state['nav_role'] in _ROLE_OPTIONS else 0
+
+# محدّد لوحة التحكم داخل الشريط الجانبي (كما كان)
+st.sidebar.radio(
     "اختر لوحة التحكم:",
-    ["👨‍🏫 حساب المعلم (رصد الحضور)", "👔 حساب الوكيل والمدير (المتابعة والتصدير)"],
+    _ROLE_OPTIONS,
+    index=_cur_role_idx,
+    key='nav_role_side',
+    on_change=_sync_role_from_side,
     label_visibility="collapsed"
 )
+
+# محدّد لوحة التحكم أعلى الصفحة الرئيسية (يظهر دائمًا حتى ولو أُغلق الشريط الجانبي)
+st.markdown("<div style='background:#EFF6FF; border:1px solid #3B82F6; border-radius:10px; padding:8px 12px; margin-bottom:6px; font-weight:700; color:#1E3A8A; text-align:center;'>📌 التنقل بين لوحات التحكم</div>", unsafe_allow_html=True)
+st.radio(
+    "اختر لوحة التحكم:",
+    _ROLE_OPTIONS,
+    index=_cur_role_idx,
+    key='nav_role_main',
+    on_change=_sync_role_from_main,
+    horizontal=True,
+    label_visibility="collapsed"
+)
+
+role = st.session_state['nav_role']
 st.write("")
 
 # =========================================================
