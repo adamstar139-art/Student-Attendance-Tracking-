@@ -24,22 +24,6 @@ def _logo_img_html(height=72, margin_bottom=8):
         return ""
     return f'<img src="{uri}" alt="شعار مدارس الثغر النموذجية" style="height:{height}px; width:auto; margin-bottom:{margin_bottom}px; display:inline-block;" />'
 
-def _report_signature_html():
-    """توقيع أسماء قيادات المدرسة أسفل كل تقرير (يُدرج قبل </body>)."""
-    return (
-        '<div style="margin-top:26px; border-top:2px solid #0F2552; padding-top:12px; '
-        'text-align:center; font-family:\'Cairo\',sans-serif; color:#1E293B;">'
-        '<div style="font-weight:800; font-size:14px; color:#0F2552; margin-bottom:6px;">'
-        '🏫 قيادة مدارس الثغر النموذجية الأهلية</div>'
-        '<div style="font-size:13px; font-weight:700; line-height:1.9;">'
-        'وكيل شؤون الطلاب: صالح بن عبدالله الدعجاني &nbsp;|&nbsp; '
-        'وكيل الشؤون التعليمية: محمد مبروك السيد &nbsp;|&nbsp; '
-        'مدير المدرسة: إبراهيم بن موسى التميمي</div>'
-        '<div style="font-size:12px; font-weight:700; color:#475569; margin-top:4px;">'
-        '💻 المسؤول التقني والمنصة: أ. محمد سامي السعيد</div>'
-        '</div>'
-    )
-
 # =========================================================
 # 0. ربط قاعدة البيانات السحابية الدائمة (Supabase Cloud)
 # =========================================================
@@ -565,14 +549,11 @@ TEACHER_PASSWORDS = {
 # =========================================================
 # 1. تهيئة صفحة Streamlit والتنسيق (RTL & CSS احترافي)
 # =========================================================
-if "sidebar_state" not in st.session_state:
-    st.session_state["sidebar_state"] = "expanded"
-
 st.set_page_config(
     page_title="نظام تحضير متوسطة الثغر النموذجية",
     page_icon="🏫",
     layout="wide",
-    initial_sidebar_state=st.session_state.get("sidebar_state", "expanded")
+    initial_sidebar_state="expanded"
 )
 
 # تطبيق اتجاه RTL وتنسيقات CSS احترافية ومعدلة للجوال
@@ -697,44 +678,6 @@ div[role="radiogroup"] {
     font-weight: bold;
     display: inline-block;
 }
-
-/* 🎬 الشريط المتحرك الجانبي (أسماء القيادات) — على الجانب الأيمن */
-.thaghr-vmarquee { position: fixed; right: 6px; top: 90px; height: 72vh; width: 192px; background: linear-gradient(180deg, #0F172A 0%, #1E3A8A 100%); border-radius: 14px; box-shadow: 0 6px 18px rgba(30,58,138,.3); overflow: hidden; z-index: 9990; border: 1px solid #3B82F6; }
-.thaghr-vmarquee .vtitle { position: absolute; top: 0; left: 0; width: 100%; box-sizing: border-box; text-align: center; color: #FDE68A; font-weight: 800; font-size: 13px; padding: 8px 6px; background: rgba(15,23,42,.92); border-bottom: 1px solid rgba(255,255,255,.15); z-index: 2; }
-.thaghr-vtrack { position: absolute; top: 0; left: 0; width: 100%; box-sizing: border-box; padding: 0 8px; animation: thaghrVScroll 20s linear infinite; }
-.thaghr-vmarquee:hover .thaghr-vtrack { animation-play-state: paused; }
-.thaghr-vitem { text-align: center; line-height: 1.6; padding: 12px 4px; border-bottom: 1px dashed rgba(255,255,255,.14); }
-.thaghr-vitem .role { display: block; color: #A7F3D0; font-size: 11px; font-weight: 700; margin-bottom: 3px; }
-.thaghr-vitem .nm { display: block; color: #FFFFFF; font-size: 13px; font-weight: 800; }
-@keyframes thaghrVScroll { 0% { transform: translateY(74vh); } 100% { transform: translateY(-100%); } }
-@media (max-width: 820px) { .thaghr-vmarquee { width: 142px; height: 58vh; top: 72px; } .thaghr-vitem .nm { font-size: 12px; } }
-
-/* 🔘 تخصيص وأيقونة إظهار/إخفاء الشريط الجانبي (Sidebar Toggle Icon) */
-[data-testid="stSidebarCollapseButton"], [data-testid="stSidebarExpandButton"] {
-    background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%) !important;
-    color: #FFFFFF !important;
-    border-radius: 8px !important;
-    padding: 6px 12px !important;
-    font-size: 16px !important;
-    border: 1px solid #60A5FA !important;
-    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3) !important;
-    transition: all 0.2s ease-in-out !important;
-}
-
-[data-testid="stSidebarCollapseButton"]:hover, [data-testid="stSidebarExpandButton"]:hover {
-    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
-    transform: scale(1.05) !important;
-}
-
-[data-testid="stSidebarCollapseButton"]::after, [data-testid="stSidebarExpandButton"]::after {
-    content: " ☰ الشريط الجانبي" !important;
-    font-family: 'Cairo', sans-serif !important;
-    font-size: 12px !important;
-    font-weight: 700 !important;
-    color: #FFFFFF !important;
-    margin-right: 4px !important;
-}
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -838,7 +781,6 @@ tr:nth-child(even) {{ background:#F8FAFC; }}
 {rows_html}
 </tbody>
 </table>
-{_report_signature_html()}
 </body>
 </html>"""
     return html_code
@@ -883,7 +825,6 @@ tr:nth-child(even) {{ background:#F8FAFC; }}
 {rows_html}
 </tbody>
 </table>
-{_report_signature_html()}
 </body>
 </html>"""
     return html_code
@@ -964,7 +905,6 @@ th {{ background:#0F2552; color:white; font-weight:700; }}
 <div class="footer">
     تم توليد هذا التقرير آلياً من نظام تحضير متوسطة الثغر النموذجية
 </div>
-{_report_signature_html()}
 </body>
 </html>"""
     return html_code
@@ -1071,7 +1011,6 @@ h4 {{ color:#4B5563; margin:5px; font-weight:700; font-size:16px; }}
 <div class="footer">
     تم توليد هذا التقرير آلياً من نظام تحضير متوسطة الثغر النموذجية
 </div>
-{_report_signature_html()}
 </body>
 </html>"""
     return html_code
@@ -1168,7 +1107,6 @@ th {{ background:#0F2552; color:#FFFFFF; font-weight:700; font-size:12px; }}
 <div class="footer">
     تم توليد هذا التقرير آلياً من نظام تحضير متوسطة الثغر النموذجية
 </div>
-{_report_signature_html()}
 </body>
 </html>"""
     return html_code
@@ -1180,69 +1118,11 @@ if _logo_data_uri():
     st.sidebar.markdown(f"<div style='text-align:center; margin-bottom:10px;'><img src='{_logo_data_uri()}' alt='شعار مدارس الثغر النموذجية' style='max-width:160px; width:80%; height:auto;' /></div>", unsafe_allow_html=True)
 st.sidebar.title("📌 نظام المتابعة")
 st.sidebar.markdown("<div style='background:#1E293B; border-right:4px solid #3B82F6; border-radius:8px; padding:10px; margin-bottom:12px; font-weight:700; color:#F8FAFC;'>👇 اختر لوحة التحكم:</div>", unsafe_allow_html=True)
-
-# =========================================================
-# اختيار لوحة التحكم — متاح دائمًا (أعلى الصفحة + الشريط الجانبي)
-# يحل مشكلة عدم العودة للوحة التحكم على الجوال عند إغلاق الشريط الجانبي
-# =========================================================
-_ROLE_OPTIONS = ["👨‍🏫 حساب المعلم (رصد الحضور)", "👔 حساب الوكيل والمدير (المتابعة والتصدير)"]
-if 'nav_role' not in st.session_state:
-    st.session_state['nav_role'] = _ROLE_OPTIONS[0]
-
-def _sync_role_from_main():
-    st.session_state['nav_role'] = st.session_state.get('nav_role_main', _ROLE_OPTIONS[0])
-
-def _sync_role_from_side():
-    st.session_state['nav_role'] = st.session_state.get('nav_role_side', _ROLE_OPTIONS[0])
-
-_cur_role_idx = _ROLE_OPTIONS.index(st.session_state['nav_role']) if st.session_state['nav_role'] in _ROLE_OPTIONS else 0
-
-# محدّد لوحة التحكم داخل الشريط الجانبي (كما كان)
-st.sidebar.radio(
+role = st.sidebar.radio(
     "اختر لوحة التحكم:",
-    _ROLE_OPTIONS,
-    index=_cur_role_idx,
-    key='nav_role_side',
-    on_change=_sync_role_from_side,
+    ["👨‍🏫 حساب المعلم (رصد الحضور)", "👔 حساب الوكيل والمدير (المتابعة والتصدير)"],
     label_visibility="collapsed"
 )
-
-# 🎬 التحكم بإنارة وتصميم الشاشة: إظهار/إخفاء الشريط الجانبي والشريط المتحرك
-if 'show_marquee' not in st.session_state:
-    st.session_state['show_marquee'] = True
-if 'sidebar_state' not in st.session_state:
-    st.session_state['sidebar_state'] = 'expanded'
-
-_mq_c1, _mq_c2, _mq_c3 = st.columns([1.6, 1.6, 3.2])
-with _mq_c1:
-    _side_is_exp = st.session_state.get('sidebar_state', 'expanded') == 'expanded'
-    _side_label = "👈 إخفاء الشريط الجانبي" if _side_is_exp else "👉 إظهار الشريط الجانبي"
-    if st.button(_side_label, use_container_width=True, key="toggle_sidebar_btn"):
-        st.session_state['sidebar_state'] = 'collapsed' if _side_is_exp else 'expanded'
-        st.rerun()
-
-with _mq_c2:
-    _mq_label = "🙈 إخفاء الشريط المتحرك" if st.session_state['show_marquee'] else "🎬 إظهار الشريط المتحرك"
-    if st.button(_mq_label, use_container_width=True, key="toggle_marquee_btn"):
-        st.session_state['show_marquee'] = not st.session_state['show_marquee']
-        st.rerun()
-
-if st.session_state['show_marquee']:
-    st.markdown("<div class='thaghr-vmarquee'><div class='vtitle'>🏫 قيادة مدارس الثغر</div><div class='thaghr-vtrack'><div class='thaghr-vitem'><span class='role'>مدير المدرسة</span><span class='nm'>إبراهيم بن موسى التميمي</span></div><div class='thaghr-vitem'><span class='role'>وكيل الشؤون التعليمية</span><span class='nm'>محمد مبروك السيد</span></div><div class='thaghr-vitem'><span class='role'>وكيل شؤون الطلاب</span><span class='nm'>صالح بن عبدالله الدعجاني</span></div><div class='thaghr-vitem'><span class='role'>المسؤول التقني والمنصة</span><span class='nm'>أ. محمد سامي السعيد</span></div></div></div>", unsafe_allow_html=True)
-
-# محدّد لوحة التحكم أعلى الصفحة الرئيسية (يظهر دائمًا حتى ولو أُغلق الشريط الجانبي)
-st.markdown("<div style='background:#EFF6FF; border:1px solid #3B82F6; border-radius:10px; padding:8px 12px; margin-bottom:6px; font-weight:700; color:#1E3A8A; text-align:center;'>📌 التنقل بين لوحات التحكم</div>", unsafe_allow_html=True)
-st.radio(
-    "اختر لوحة التحكم:",
-    _ROLE_OPTIONS,
-    index=_cur_role_idx,
-    key='nav_role_main',
-    on_change=_sync_role_from_main,
-    horizontal=True,
-    label_visibility="collapsed"
-)
-
-role = st.session_state['nav_role']
 st.write("")
 
 # =========================================================
