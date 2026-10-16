@@ -363,6 +363,7 @@ STUDENTS_DB = {
             {"id": "1170548737", "name": "يوسف محمد عبدالله الدوسري"}
         ]
     },
+
     "الثاني المتوسط": {
         "ثاني أول (فصل 1)": [
             {"id": "1163760935", "name": "احمد سامي بن احمد العمران"},
@@ -434,6 +435,7 @@ STUDENTS_DB = {
             {"id": "1167371093", "name": "يوسف عايد عواد البلوي"}
         ]
     },
+
     "الثالث المتوسط": {
         "ثالث أول (فصل 1)": [
             {"id": "1158966166", "name": "أصيل ناصر بن محمد مذكور"},
@@ -484,7 +486,7 @@ STUDENTS_DB = {
         ],
         "ثالث ثالث (فصل 3)": [
             {"id": "1163525544", "name": "ثامر وليد بن عبدالعزيز الطليحي"},
-            {"id": "1160712996", "name": "خالد بن عبدالرؤف بن عبدالرحمن بن عبدالله الشنيير"},
+            {"id": "1160712996", "name": "خالد بن عبدالرؤوف بن عبدالرحمن بن عبدالله الشنيير"},
             {"id": "1162560054", "name": "خالد عبدالله خالد الخالدي"},
             {"id": "1174188647", "name": "خالد محمد بن عبدالله ال درعان"},
             {"id": "1159155223", "name": "راشد سعيد راشد عبدالسلام"},
@@ -821,23 +823,25 @@ def generate_period_counts_report_html(counts_rows, report_label, hijri_label):
 
     seq = 0
     if not counts_rows:
-        body_rows = '<tr><td colspan="6" style="color:#64748B;padding:16px;">لا توجد بيانات مرصودة ضمن النطاق المحدد.</td></tr>'
+        body_rows = '<tr><td colspan="7" style="color:#64748B;padding:16px;">لا توجد بيانات مرصودة ضمن النطاق المحدد.</td></tr>'
     for g in grades_order:
         body_rows += (f'<tr style="background:#0F2552;color:#FFFFFF;">'
-                      f'<td colspan="6" style="text-align:right;font-weight:800;font-size:14px;">🏫 {g}</td></tr>')
+                      f'<td colspan="7" style="text-align:right;font-weight:800;font-size:14px;">🏫 {g}</td></tr>')
         for s, rows in grouped[g].items():
             body_rows += (f'<tr style="background:#E0E7FF;">'
-                          f'<td colspan="6" style="text-align:right;font-weight:700;color:#0F2552;">🚪 {s}</td></tr>')
+                          f'<td colspan="7" style="text-align:right;font-weight:700;color:#0F2552;">🚪 {s}</td></tr>')
             for r in rows:
                 seq += 1
                 cnt = int(r.get("عدد الطلاب", 0))
                 pres = int(r.get("الحاضرون", 0))
                 absn = int(r.get("الغائبون", 0))
+                late = int(r.get("المتأخرون", 0))
                 body_rows += (f'<tr><td style="font-weight:700;color:#1E293B;">{r.get("الحصة", "")}</td>'
                               f'<td style="text-align:right;color:#1E293B;font-weight:600;">{r.get("اسم المعلم", "غير محدد")}</td>'
                               f'<td style="font-weight:800;color:#0F2552;">{cnt}</td>'
                               f'<td style="font-weight:800;color:#16A34A;">{pres}</td>'
                               f'<td style="font-weight:800;color:#DC2626;">{absn}</td>'
+                              f'<td style="font-weight:800;color:#CA8A04;">{late}</td>'
                               f'<td style="color:#94A3B8;">{seq}</td></tr>')
 
     html_code = f"""<!DOCTYPE html>
@@ -869,7 +873,7 @@ th {{ background:#0F2552; color:white; font-weight:700; }}
 </div>
 <table>
 <thead>
-<tr><th>الحصة</th><th>اسم المعلم</th><th>عدد الطلاب</th><th>الحاضرون</th><th>الغائبون</th><th>#</th></tr>
+<tr><th>الحصة</th><th>اسم المعلم</th><th>عدد الطلاب</th><th>الحاضرون</th><th>الغائبون</th><th>المتأخرون</th><th>#</th></tr>
 </thead>
 <tbody>
 {body_rows}
@@ -883,7 +887,7 @@ th {{ background:#0F2552; color:white; font-weight:700; }}
     return html_code
 
 def generate_charts_report_html(counts_rows, report_label, hijri_label):
-    """يولّد تقرير HTML مستقل برسوم أعمدة (حاضر/غائب) لكل حصة ضمن كل فصل وصف — CSS نقي مدمج قابل للطباعة."""
+    """يولّد تقرير HTML مستقل برسوم أعمدة (حاضر/غائب/متأخر) لكل حصة ضمن كل فصل وصف — CSS نقي مدمج قابل للطباعة."""
     grades_order = []
     grouped = {}
     for r in counts_rows:
@@ -898,6 +902,7 @@ def generate_charts_report_html(counts_rows, report_label, hijri_label):
             "period": r.get("الحصة", ""),
             "present": int(r.get("الحاضرون", 0)),
             "absent": int(r.get("الغائبون", 0)),
+            "late": int(r.get("المتأخرون", 0)),
         })
 
     charts_html = ""
@@ -906,19 +911,23 @@ def generate_charts_report_html(counts_rows, report_label, hijri_label):
     for g in grades_order:
         charts_html += (f'<div class="grade-title">🏫 {g}</div>')
         for s, periods in grouped[g].items():
-            max_val = max([max(p["present"], p["absent"]) for p in periods] + [1])
+            max_val = max([max(p["present"], p["absent"], p["late"]) for p in periods] + [1])
             bars = ""
             for p in periods:
                 ph = int(round(p["present"] / max_val * 160)) if max_val else 0
                 ah = int(round(p["absent"] / max_val * 160)) if max_val else 0
+                lh = int(round(p["late"] / max_val * 160)) if max_val else 0
                 ph = max(ph, 2) if p["present"] > 0 else 1
                 ah = max(ah, 2) if p["absent"] > 0 else 1
+                lh = max(lh, 2) if p["late"] > 0 else 1
                 bars += (f'<div class="group">'
                          f'<div class="bars">'
                          f'<div class="bar-wrap"><span class="val vp">{p["present"]}</span>'
                          f'<div class="bar present" style="height:{ph}px;"></div></div>'
                          f'<div class="bar-wrap"><span class="val va">{p["absent"]}</span>'
                          f'<div class="bar absent" style="height:{ah}px;"></div></div>'
+                         f'<div class="bar-wrap"><span class="val vl">{p["late"]}</span>'
+                         f'<div class="bar late" style="height:{lh}px;"></div></div>'
                          f'</div>'
                          f'<div class="xlabel">{p["period"]}</div></div>')
             charts_html += (f'<div class="chart-card">'
@@ -951,9 +960,11 @@ h4 {{ color:#4B5563; margin:5px; font-weight:700; font-size:16px; }}
 .val {{ font-size:12px; font-weight:800; margin-bottom:4px; }}
 .vp {{ color:#16A34A; }}
 .va {{ color:#DC2626; }}
-.bar {{ width:34px; border-radius:6px 6px 0 0; }}
+.vl {{ color:#CA8A04; }}
+.bar {{ width:30px; border-radius:6px 6px 0 0; }}
 .bar.present {{ background:linear-gradient(180deg,#22C55E,#16A34A); }}
 .bar.absent {{ background:linear-gradient(180deg,#F87171,#DC2626); }}
+.bar.late {{ background:linear-gradient(180deg,#FBBF24,#CA8A04); }}
 .xlabel {{ margin-top:8px; font-size:13px; font-weight:700; color:#0F2552; }}
 .footer {{ margin-top:22px; text-align:center; color:#94A3B8; font-size:12px; border-top:1px solid #E2E8F0; padding-top:10px; }}
 @media print {{ body {{ padding:10px; background:#FFF; }} .chart-card {{ box-shadow:none; }} }}
@@ -962,7 +973,7 @@ h4 {{ color:#4B5563; margin:5px; font-weight:700; font-size:16px; }}
 <body>
 <div class="header">
     <h2>🏫 مدرسة متوسطة الثغر النموذجية</h2>
-    <h4>الرسوم البيانية للحضور والغياب لكل صف وفصل</h4>
+    <h4>الرسوم البيانية للحضور والغياب والتأخر لكل صف وفصل</h4>
 </div>
 <div class="meta">
     📅 النطاق: {report_label} &nbsp;|&nbsp; 🌙 التاريخ الهجري: {hijri_label}
@@ -970,6 +981,7 @@ h4 {{ color:#4B5563; margin:5px; font-weight:700; font-size:16px; }}
 <div class="legend">
     <span><i style="background:#16A34A;"></i> الطلاب الحاضرون</span>
     <span><i style="background:#DC2626;"></i> الطلاب الغائبون</span>
+    <span><i style="background:#CA8A04;"></i> الطلاب المتأخرون</span>
 </div>
 {charts_html}
 <div class="footer">
@@ -999,6 +1011,7 @@ def generate_landscape_grid_html(counts_rows, report_label, hijri_label):
             "teacher": r.get("اسم المعلم", "—"),
             "present": int(r.get("الحاضرون", 0)),
             "absent": int(r.get("الغائبون", 0)),
+            "late": int(r.get("المتأخرون", 0)),
         }
 
     def _pk(pname):
@@ -1017,7 +1030,8 @@ def generate_landscape_grid_html(counts_rows, report_label, hijri_label):
             if cell:
                 cells += (f'<td class="cell"><div class="tch">{cell["teacher"]}</div>'
                           f'<div class="cnt"><span class="pres">حاضر {cell["present"]}</span>'
-                          f'<span class="abs">غائب {cell["absent"]}</span></div></td>')
+                          f'<span class="abs">غائب {cell["absent"]}</span>'
+                          f'<span class="lat">متأخر {cell["late"]}</span></div></td>')
             else:
                 cells += '<td class="cell empty">—</td>'
         body_rows += (f'<tr><td class="rowhead"><b>{s}</b><br><small>{g}</small></td>{cells}</tr>')
@@ -1044,6 +1058,7 @@ th {{ background:#0F2552; color:#FFFFFF; font-weight:700; font-size:12px; }}
 .cell .cnt {{ display:flex; flex-direction:column; gap:2px; align-items:center; }}
 .pres {{ color:#16A34A; font-weight:800; }}
 .abs {{ color:#DC2626; font-weight:800; }}
+.lat {{ color:#CA8A04; font-weight:800; }}
 .cell.empty {{ color:#CBD5E1; font-weight:700; }}
 .footer {{ margin-top:16px; text-align:center; color:#94A3B8; font-size:11px; border-top:1px solid #E2E8F0; padding-top:8px; }}
 </style>
@@ -1305,9 +1320,10 @@ else:
                     _cnt = int(_sub['رقم الطالب'].nunique())
                     _present = int(_sub[_sub['الحالة'] == 'حاضر']['رقم الطالب'].nunique())
                     _absent = int(_sub[_sub['الحالة'] == 'غائب']['رقم الطالب'].nunique())
-                    pc_rows.append({"الصف": _g, "الفصل": _s, "الحصة": _p, "اسم المعلم": _teachers, "عدد الطلاب": _cnt, "الحاضرون": _present, "الغائبون": _absent})
+                    _late = int(_sub[_sub['الحالة'] == 'متأخر']['رقم الطالب'].nunique())
+                    pc_rows.append({"الصف": _g, "الفصل": _s, "الحصة": _p, "اسم المعلم": _teachers, "عدد الطلاب": _cnt, "الحاضرون": _present, "الغائبون": _absent, "المتأخرون": _late})
 
-            df_pc_table = pd.DataFrame(pc_rows, columns=["الصف", "الفصل", "الحصة", "اسم المعلم", "عدد الطلاب", "الحاضرون", "الغائبون"])
+            df_pc_table = pd.DataFrame(pc_rows, columns=["الصف", "الفصل", "الحصة", "اسم المعلم", "عدد الطلاب", "الحاضرون", "الغائبون", "المتأخرون"])
             st.markdown(f"#### 📊 جدول الحصص والمعلمين وعدد الطلاب لكل فصل ({pc_label}):")
             if pc_rows:
                 st.dataframe(df_pc_table, use_container_width=True)
@@ -1325,7 +1341,7 @@ else:
                 use_container_width=True
             )
 
-        with st.expander("📈 الرسوم البيانية (أعمدة الحضور والغياب لكل صف وفصل)", expanded=False):
+        with st.expander("📈 الرسوم البيانية (أعمدة الحضور والغياب والتأخر لكل صف وفصل)", expanded=False):
             if pc_rows:
                 _ch_grouped = {}
                 _ch_order = []
@@ -1340,12 +1356,13 @@ else:
                         "الحصة": _r.get("الحصة", ""),
                         "حاضر": int(_r.get("الحاضرون", 0)),
                         "غائب": int(_r.get("الغائبون", 0)),
+                        "متأخر": int(_r.get("المتأخرون", 0)),
                     })
-                st.markdown(f"#### 📈 أعمدة الحضور والغياب لكل حصة ({pc_label}):")
+                st.markdown(f"#### 📈 أعمدة الحضور والغياب والتأخر لكل حصة ({pc_label}):")
                 for (_gg, _ss) in _ch_order:
                     st.markdown(f"**🚪 الفصل {_ss} — {_gg}**")
                     _chart_df = pd.DataFrame(_ch_grouped[(_gg, _ss)]).set_index("الحصة")
-                    st.bar_chart(_chart_df, color=["#DC2626", "#16A34A"])
+                    st.bar_chart(_chart_df, color=["#16A34A", "#DC2626", "#CA8A04"])
             else:
                 st.info("لا توجد بيانات مرصودة لرسمها ضمن النطاق المحدد.")
 
