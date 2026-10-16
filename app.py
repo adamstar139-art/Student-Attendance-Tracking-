@@ -5,6 +5,26 @@ import io
 import copy
 
 # =========================================================
+# شعار المدرسة (مضمّن Base64 داخل الملف عبر وحدة logo_data — لا ينكسر عند الرفع/التنزيل)
+# =========================================================
+try:
+    from logo_data import load_logo_b64
+    _LOGO_B64 = load_logo_b64() or ""
+except Exception:
+    _LOGO_B64 = ""
+
+def _logo_data_uri():
+    """يعيد رابط بيانات (data URI) للشعار المضمّن، أو سلسلة فارغة إن لم يتوفر."""
+    return f"data:image/png;base64,{_LOGO_B64}" if _LOGO_B64 else ""
+
+def _logo_img_html(height=72, margin_bottom=8):
+    """وسم <img> جاهز لترويسات تقارير HTML/PDF (يرجع فارغًا إذا تعذر تحميل الشعار)."""
+    uri = _logo_data_uri()
+    if not uri:
+        return ""
+    return f'<img src="{uri}" alt="شعار مدارس الثغر النموذجية" style="height:{height}px; width:auto; margin-bottom:{margin_bottom}px; display:inline-block;" />'
+
+# =========================================================
 # 0. ربط قاعدة البيانات السحابية الدائمة (Supabase Cloud)
 # =========================================================
 try:
@@ -749,6 +769,7 @@ tr:nth-child(even) {{ background:#F8FAFC; }}
 </head>
 <body>
 <div class="header">
+    {_logo_img_html()}<br>
     <h2>🏫 مدرسة متوسطة الثغر النموذجية</h2>
     <h4>{report_title}</h4>
 </div>
@@ -792,6 +813,7 @@ tr:nth-child(even) {{ background:#F8FAFC; }}
 </head>
 <body>
 <div class="header">
+    {_logo_img_html()}<br>
     <h2>🏫 تقرير حضور وغياب المعلمين</h2>
     <p>الفترة من {start_d} إلى {end_d}</p>
 </div>
@@ -865,6 +887,7 @@ th {{ background:#0F2552; color:white; font-weight:700; }}
 </head>
 <body>
 <div class="header">
+    {_logo_img_html()}<br>
     <h2>🏫 مدرسة متوسطة الثغر النموذجية</h2>
     <h4>تقرير الحصص ومعلميها وعدد الطلاب المرصودين لكل فصل</h4>
 </div>
@@ -972,6 +995,7 @@ h4 {{ color:#4B5563; margin:5px; font-weight:700; font-size:16px; }}
 </head>
 <body>
 <div class="header">
+    {_logo_img_html()}<br>
     <h2>🏫 مدرسة متوسطة الثغر النموذجية</h2>
     <h4>الرسوم البيانية للحضور والغياب والتأخر لكل صف وفصل</h4>
 </div>
@@ -1065,6 +1089,7 @@ th {{ background:#0F2552; color:#FFFFFF; font-weight:700; font-size:12px; }}
 </head>
 <body>
 <div class="header">
+    {_logo_img_html()}<br>
     <h2>🏫 مدرسة متوسطة الثغر النموذجية</h2>
     <h4>التقرير المجمّع لكل فصول المدرسة حسب الحصص (المعلم / الحضور)</h4>
 </div>
@@ -1089,6 +1114,8 @@ th {{ background:#0F2552; color:#FFFFFF; font-weight:700; font-size:12px; }}
 # =========================================================
 # اختيار لوحة التحكم
 # =========================================================
+if _logo_data_uri():
+    st.sidebar.markdown(f"<div style='text-align:center; margin-bottom:10px;'><img src='{_logo_data_uri()}' alt='شعار مدارس الثغر النموذجية' style='max-width:160px; width:80%; height:auto;' /></div>", unsafe_allow_html=True)
 st.sidebar.title("📌 نظام المتابعة")
 st.sidebar.markdown("<div style='background:#1E293B; border-right:4px solid #3B82F6; border-radius:8px; padding:10px; margin-bottom:12px; font-weight:700; color:#F8FAFC;'>👇 اختر لوحة التحكم:</div>", unsafe_allow_html=True)
 role = st.sidebar.radio(
@@ -1102,6 +1129,9 @@ st.write("")
 # 7. واجهة المعلم (رصد حضور الطلاب)
 # =========================================================
 if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
+
+    if _logo_data_uri():
+        st.markdown(f"<div style='text-align:center; margin-bottom:10px;'><img src='{_logo_data_uri()}' alt='شعار مدارس الثغر النموذجية' style='height:90px; width:auto;' /></div>", unsafe_allow_html=True)
 
     st.markdown("""
     <div style="
@@ -1209,6 +1239,9 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
 else:
     if 'admin_authenticated' not in st.session_state:
         st.session_state['admin_authenticated'] = False
+
+    if _logo_data_uri():
+        st.markdown(f"<div style='text-align:center; margin-bottom:10px;'><img src='{_logo_data_uri()}' alt='شعار مدارس الثغر النموذجية' style='height:90px; width:auto;' /></div>", unsafe_allow_html=True)
 
     if not st.session_state['admin_authenticated']:
         st.warning("🔒 هذه اللوحة مخصصة لإدارة المدرسة فقط. يرجى إدخال كلمة المرور للمتابعة:")
