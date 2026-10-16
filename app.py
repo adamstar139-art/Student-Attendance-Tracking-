@@ -4,9 +4,9 @@ from datetime import date, datetime, timedelta
 import io
 import copy
 
-### =========================================================
-### شعار المدرسة (مضمّن Base64 داخل الملف عبر وحدة logo_data — لا ينكسر عند الرفع/التنزيل)
-### =========================================================
+# =========================================================
+# شعار المدرسة (مضمّن Base64 داخل الملف عبر وحدة logo_data — لا ينكسر عند الرفع/التنزيل)
+# =========================================================
 try:
     from logo_data import load_logo_b64
     _LOGO_B64 = load_logo_b64() or ""
@@ -24,36 +24,9 @@ def _logo_img_html(height=72, margin_bottom=8):
         return ""
     return f'<img src="{uri}" alt="شعار مدارس الثغر النموذجية" style="height:{height}px; width:auto; margin-bottom:{margin_bottom}px; display:inline-block;" />'
 
-def _get_leadership_signatures_html():
-    """يولّد المقطع الموحد لتوقيعات قيادات المدرسة أسفل التقارير القابلة للطباعة والتصدير."""
-    return """
-    <div style="margin-top: 35px; padding-top: 15px; border-top: 2px dashed #CBD5E1; page-break-inside: avoid; text-align: center; direction: rtl; font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;">
-        <table style="width: 100%; border-collapse: collapse; border: none; background: transparent; margin-top: 10px;">
-            <tr style="border: none;">
-                <td style="width: 25%; border: none; padding: 5px; text-align: center; vertical-align: top;">
-                    <div style="font-weight: 800; color: #0F2552; font-size: 13px; margin-bottom: 6px;">المسؤول التقني والمنصة</div>
-                    <div style="color: #1E293B; font-weight: 700; font-size: 13px;">أ. محمد سامي السعيد</div>
-                </td>
-                <td style="width: 25%; border: none; padding: 5px; text-align: center; vertical-align: top;">
-                    <div style="font-weight: 800; color: #0F2552; font-size: 13px; margin-bottom: 6px;">وكيل شؤون الطلاب</div>
-                    <div style="color: #1E293B; font-weight: 700; font-size: 13px;">أ. صالح بن عبدالله الدعجاني</div>
-                </td>
-                <td style="width: 25%; border: none; padding: 5px; text-align: center; vertical-align: top;">
-                    <div style="font-weight: 800; color: #0F2552; font-size: 13px; margin-bottom: 6px;">وكيل الشؤون التعليمية</div>
-                    <div style="color: #1E293B; font-weight: 700; font-size: 13px;">أ. محمد مبروك السيد</div>
-                </td>
-                <td style="width: 25%; border: none; padding: 5px; text-align: center; vertical-align: top;">
-                    <div style="font-weight: 800; color: #0F2552; font-size: 13px; margin-bottom: 6px;">مدير المدرسة</div>
-                    <div style="color: #1E293B; font-weight: 700; font-size: 13px;">أ. إبراهيم بن موسى التميمي</div>
-                </td>
-            </tr>
-        </table>
-    </div>
-    """
-
-### =========================================================
-### 0. ربط قاعدة البيانات السحابية الدائمة (Supabase Cloud)
-### =========================================================
+# =========================================================
+# 0. ربط قاعدة البيانات السحابية الدائمة (Supabase Cloud)
+# =========================================================
 try:
     from supabase import create_client, Client
     _SUPABASE_LIB = True
@@ -92,7 +65,7 @@ def get_supabase():
 def supabase_ready():
     return get_supabase() is not None
 
-### --- دوال قراءة وحفظ حضور الطلاب ---
+# --- دوال قراءة وحفظ حضور الطلاب ---
 STU_COLS = ["التاريخ", "اسم المعلم", "الصف", "الفصل", "الحصة", "رقم الطالب", "اسم الطالب", "الحالة"]
 
 @st.cache_data(ttl=5, show_spinner=False)
@@ -187,7 +160,7 @@ def delete_student_attendance_from_db(scope):
     finally:
         st.cache_data.clear()
 
-### --- دوال سجلات المعلمين ---
+# --- دوال سجلات المعلمين ---
 @st.cache_data(ttl=5, show_spinner=False)
 def _fetch_teacher_rows():
     sb = get_supabase()
@@ -266,7 +239,7 @@ def delete_teacher_logs_from_db(scope):
     finally:
         st.cache_data.clear()
 
-### --- دوال إدارة الطلاب (إضافة / نقل) ---
+# --- دوال إدارة الطلاب (إضافة / نقل) ---
 def add_student_db(student_id, student_name, grade, section):
     sb = get_supabase()
     if sb is None:
@@ -314,9 +287,9 @@ def get_active_students_db():
             st_db[new_grade][new_section].append({"id": str(st_id), "name": str(st_name)})
     return st_db
 
-### =========================================================
-### إدارة المعلمين (إضافة معلم جديد وحفظه بشكل دائم)
-### =========================================================
+# =========================================================
+# إدارة المعلمين (إضافة معلم جديد وحفظه بشكل دائم)
+# =========================================================
 @st.cache_data(ttl=5, show_spinner=False)
 def _fetch_custom_teachers_rows():
     sb = get_supabase()
@@ -359,9 +332,9 @@ def get_active_teachers():
         pw[nm] = str(row.get("password", "")).strip() or pw.get(nm, "101")
     return names, pw
 
-### =========================================================
-### قوائم الطلاب المحفورة
-### =========================================================
+# =========================================================
+# قوائم الطلاب المحفورة
+# =========================================================
 STUDENTS_DB = {
     "الأول المتوسط": {
         "أول أول (فصل 1)": [
@@ -410,6 +383,7 @@ STUDENTS_DB = {
             {"id": "1170548737", "name": "يوسف محمد عبدالله الدوسري"}
         ]
     },
+
     "الثاني المتوسط": {
         "ثاني أول (فصل 1)": [
             {"id": "1163760935", "name": "احمد سامي بن احمد العمران"},
@@ -481,6 +455,7 @@ STUDENTS_DB = {
             {"id": "1167371093", "name": "يوسف عايد عواد البلوي"}
         ]
     },
+
     "الثالث المتوسط": {
         "ثالث أول (فصل 1)": [
             {"id": "1158966166", "name": "أصيل ناصر بن محمد مذكور"},
@@ -560,7 +535,9 @@ TEACHERS_LIST = [
     "السيد الغريب بدوي", "محمد إبراهيم عبد الرحمن", "أسامة أحمد سالم",
     "عماد بكر عارف", "إبراهيم علي العتيبي", "عيسى خالد العويس", "زيد بن علي التميمي"
 ]
+
 PERIODS_LIST = [f"الحصة {i}" for i in range(1, 8)]
+
 TEACHER_PASSWORDS = {
     "محمد سامي السعيد": "101", "علي محمد معوض": "102", "أحمد عبد الحميد سعيد": "103",
     "محمد عبد المنعم أبو كيلة": "104", "هيثم رضا عطية": "105", "عماد الدين نصر كرم": "106",
@@ -569,9 +546,9 @@ TEACHER_PASSWORDS = {
     "زيد بن علي التميمي": "113"
 }
 
-### =========================================================
-### 1. تهيئة صفحة Streamlit والتنسيق (RTL & CSS احترافي)
-### =========================================================
+# =========================================================
+# 1. تهيئة صفحة Streamlit والتنسيق (RTL & CSS احترافي)
+# =========================================================
 st.set_page_config(
     page_title="نظام تحضير متوسطة الثغر النموذجية",
     page_icon="🏫",
@@ -579,63 +556,133 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-### تطبيق اتجاه RTL وتنسيقات CSS احترافية ومعدلة للجوال
+# تطبيق اتجاه RTL وتنسيقات CSS احترافية ومعدلة للجوال
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
-    html, body, [class*="css"], [data-testid="stAppViewContainer"] {
-        font-family: 'Cairo', sans-serif !important;
-        direction: rtl;
-        text-align: right;
-    }
-    .status-badge-ok {
-        background-color: #DCFCE7;
-        color: #166534;
-        padding: 6px 14px;
-        border-radius: 20px;
-        font-weight: 700;
-        font-size: 13px;
-        border: 1px solid #86EFAC;
-    }
-    .status-badge-err {
-        background-color: #FEE2E2;
-        color: #991B1B;
-        padding: 6px 14px;
-        border-radius: 20px;
-        font-weight: 700;
-        font-size: 13px;
-        border: 1px solid #FCA5A5;
-    }
-    .metric-card-box {
-        background: #F8FAFC;
-        border: 1px solid #E2E8F0;
-        border-radius: 12px;
-        padding: 16px;
-        text-align: center;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.03);
-    }
-    .metric-card-val {
-        font-size: 28px;
-        font-weight: 800;
-    }
-    .metric-card-lbl {
-        font-size: 13px;
-        font-weight: 700;
-        color: #64748B;
-        margin-top: 4px;
-    }
-    .student-row-card {
-        background-color: #FFFFFF;
-        border: 1px solid #E2E8F0;
-        border-radius: 8px;
-        padding: 10px 14px;
-        margin-bottom: 8px;
-        border-right: 4px solid #2563EB;
-    }
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+
+html, body, .stApp {
+    font-family: 'Cairo', sans-serif !important;
+    direction: rtl !important;
+    text-align: right !important;
+    background-color: #F8FAFC !important;
+    color: #000000 !important;
+}
+
+[data-testid="stIcon"], [class*="material-symbols"], [class*="Material"], [class*="icon"], i {
+    font-family: 'Material Symbols Outlined', 'Material Icons' !important;
+}
+
+[data-testid="stSidebar"] {
+    direction: rtl !important;
+    text-align: right !important;
+    background-color: #0F172A !important;
+}
+
+[data-testid="stSidebar"] * {
+    direction: rtl !important;
+    text-align: right !important;
+    color: #F8FAFC !important;
+}
+
+.main .block-container {
+    direction: rtl !important;
+    text-align: right !important;
+    padding-top: 1.5rem !important;
+    padding-bottom: 2rem !important;
+}
+
+.metric-card-box {
+    background: linear-gradient(135deg, #FFFFFF 0%, #EFF6FF 100%);
+    border-radius: 14px;
+    padding: 16px;
+    text-align: center;
+    border: 1px solid #BFDBFE;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.05);
+}
+
+.metric-card-val {
+    font-size: 30px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.metric-card-lbl {
+    font-size: 13px;
+    font-weight: 700;
+    color: #475569;
+    margin-top: 4px;
+}
+
+.student-row-card, .student-card {
+    background-color: #FFFFFF !important;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    border-right: 5px solid #2563EB;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.student-row-card b, .student-card b {
+    color: #000000 !important;
+    font-size: 16px !important;
+    font-weight: 800 !important;
+}
+
+.student-row-card small, .student-card small {
+    color: #475569 !important;
+    font-weight: 600 !important;
+}
+
+.stButton > button {
+    border-radius: 8px !important;
+    font-weight: 700 !important;
+    font-family: 'Cairo', sans-serif !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+.stButton > button:hover {
+    transform: translateY(-1px) !important;
+}
+
+div[role="radiogroup"] {
+    direction: rtl !important;
+    justify-content: flex-start !important;
+}
+
+.stSelectbox, .stTextInput, .stDateInput, .stNumberInput {
+    direction: rtl !important;
+    text-align: right !important;
+}
+
+.stDataFrame {
+    direction: rtl !important;
+}
+
+.status-badge-ok {
+    background-color: #10B981;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: bold;
+    display: inline-block;
+}
+
+.status-badge-err {
+    background-color: #EF4444;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: bold;
+    display: inline-block;
+}
 </style>
 """, unsafe_allow_html=True)
 
-### شريط حالة الاتصال بالشريط الجانبي
+
+# شريط حالة الاتصال بالشريط الجانبي
 if supabase_ready():
     st.sidebar.markdown("<div style='text-align:center; margin-bottom:15px;'><span class='status-badge-ok'>🟢 متصل بسحابة Supabase</span></div>", unsafe_allow_html=True)
 else:
@@ -647,11 +694,27 @@ url = "https://yathpzoxjfpgahkbjzgz.supabase.co"
 key = "sb_publishable_4Igw4yxTyqcZzSvXei6TEg_cuxhLKcE"
 """, language="toml")
 
-### =========================================================
-### تفعيل أدوات التعديل تلقائياً وبشكل دائم دون الحاجة لكلمة مرور adam0000
-### =========================================================
 if 'dev_unlocked' not in st.session_state:
-    st.session_state['dev_unlocked'] = True
+    st.session_state['dev_unlocked'] = False
+
+if not st.session_state['dev_unlocked']:
+    st.markdown("""
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    div[data-testid="stToolbar"] {visibility: hidden;}
+    </style>
+    """, unsafe_allow_html=True)
+
+with st.sidebar.expander("🔐 فك قفل أدوات التعديل والرمز"):
+    pwd_dev = st.text_input("أدخل كلمة المرور (adam0000):", type="password", key="pwd_dev_input")
+    if st.button("فتح التعديل"):
+        if pwd_dev == "adam0000":
+            st.session_state['dev_unlocked'] = True
+            st.success("تم فك القفل بنجاح!")
+            st.rerun()
+        else:
+            st.error("كلمة المرور غير صحيحة!")
 
 def gregorian_to_hijri_approx(g_date):
     try:
@@ -677,9 +740,9 @@ def gregorian_to_hijri_approx(g_date):
 today_curr = date.today()
 hijri_curr = gregorian_to_hijri_approx(today_curr)
 
-### =========================================================
-### دوال توليد طباعة HTML متضمنة توقيعات قيادات المدرسة
-### =========================================================
+# =========================================================
+# دوال توليد طباعة HTML
+# =========================================================
 def generate_printable_html(df_subset, report_title):
     rows_html = ""
     for idx, row in enumerate(df_subset.to_dict('records'), 1):
@@ -687,63 +750,37 @@ def generate_printable_html(df_subset, report_title):
         teacher = row.get('اسم المعلم', 'غير محدد')
         rows_html += f'<tr><td>{idx}</td><td style="text-align: right;"><b>{row["اسم الطالب"]}</b><br><small style="color:#64748B;">الهوية: {row["رقم الطالب"]}</small></td><td>{row["الصف"]}</td><td>{row["الفصل"]}</td><td>{row["الحصة"]}</td><td>{teacher}</td><td style="color:{status_color};font-weight:bold;">{row["الحالة"]}</td></tr>'
 
-    logo_html = _logo_img_html(70, 8)
-    today_str = date.today().strftime("%Y/%m/%d")
-    hijri_str = gregorian_to_hijri_approx(date.today())
-    signatures_html = _get_leadership_signatures_html()
-
     html_code = f"""<!DOCTYPE html>
-<html dir="rtl" lang="ar">
+<html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <title>{report_title}</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
-        body {{ font-family: 'Cairo', sans-serif; margin: 20px; color: #1E293B; background: #FFF; direction: rtl; }}
-        .header {{ text-align: center; margin-bottom: 20px; border-bottom: 3px double #0F2552; padding-bottom: 12px; }}
-        .title {{ font-size: 22px; font-weight: 800; color: #0F2552; margin: 5px 0; }}
-        .sub-title {{ font-size: 14px; color: #475569; font-weight: 600; }}
-        .meta-info {{ display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 15px; background: #F8FAFC; padding: 10px 15px; border-radius: 8px; border: 1px solid #E2E8F0; }}
-        table {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; text-align: center; }}
-        th {{ background-color: #0F2552; color: white; padding: 10px; font-weight: 700; border: 1px solid #0F2552; }}
-        td {{ padding: 8px; border: 1px solid #CBD5E1; vertical-align: middle; }}
-        tr:nth-child(even) {{ background-color: #F8FAFC; }}
-        @media print {{
-            body {{ margin: 0; padding: 10mm; }}
-            .no-print {{ display: none !important; }}
-            @page {{ size: A4 portrait; margin: 10mm; }}
-        }}
-    </style>
+<meta charset="utf-8">
+<title>{report_title}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+body {{ font-family: 'Cairo', sans-serif; text-align: right; padding: 25px; background:#FFF; color:#1E293B; direction: rtl; }}
+.header {{ text-align: center; border-bottom: 3px solid #0F2552; padding-bottom: 12px; margin-bottom: 20px; }}
+h2 {{ color:#0F2552; margin:5px; font-weight:800; font-size:22px; }}
+h4 {{ color:#4B5563; margin:5px; font-weight:700; font-size:16px; }}
+table {{ width:100%; border-collapse: collapse; margin-top:10px; }}
+th, td {{ border:1px solid #CBD5E1; padding:10px; text-align:center; font-size:13px; }}
+th {{ background:#0F2552; color:white; font-weight:700; }}
+tr:nth-child(even) {{ background:#F8FAFC; }}
+</style>
 </head>
 <body>
-    <div class="header">
-        {logo_html}
-        <div class="title">المملكة العربية السعودية - وزارة التعليم</div>
-        <div class="sub-title">إدارة التعليم بمحافظة جدة | مدرسة متوسطة الثغر النموذجية</div>
-        <div style="font-size: 18px; font-weight: 800; color: #2563EB; margin-top: 10px;">{report_title}</div>
-    </div>
-    <div class="meta-info">
-        <span>📅 التاريخ الميلادي: {today_str}</span>
-        <span>🌙 التاريخ الهجري: {hijri_str}</span>
-        <span>📊 إجمالي السجلات: {len(df_subset)}</span>
-    </div>
-    <table>
-        <thead>
-            <tr>
-                <th style="width: 5%;">#</th>
-                <th style="width: 25%;">اسم الطالب</th>
-                <th style="width: 15%;">الصف</th>
-                <th style="width: 15%;">الفصل</th>
-                <th style="width: 10%;">الحصة</th>
-                <th style="width: 18%;">المعلم المرخص</th>
-                <th style="width: 12%;">الحالة</th>
-            </tr>
-        </thead>
-        <tbody>
-            {rows_html}
-        </tbody>
-    </table>
-    {signatures_html}
+<div class="header">
+    {_logo_img_html()}<br>
+    <h2>🏫 مدرسة متوسطة الثغر النموذجية</h2>
+    <h4>{report_title}</h4>
+</div>
+<table>
+<thead>
+<tr><th>#</th><th>اسم الطالب</th><th>الصف</th><th>الفصل</th><th>الحصة</th><th>المعلم</th><th>الحالة</th></tr>
+</thead>
+<tbody>
+{rows_html}
+</tbody>
+</table>
 </body>
 </html>"""
     return html_code
@@ -758,62 +795,36 @@ def generate_teacher_range_report_html(teacher_summary_list, start_d, end_d, cal
         late_style = "color:#CA8A04;font-weight:bold;" if late_cnt > 0 else "color:#16A34A;"
         rows_html += f'<tr><td>{idx}</td><td style="text-align:right;font-weight:bold;">{rec["اسم المعلم"]}</td><td style="color:#16A34A;font-weight:bold;">{present_cnt} يوم</td><td style="{absent_style}">{absent_cnt} مرة</td><td style="{late_style}">{late_cnt} مرة</td><td>{rec.get("إجمالي الحصص المرصودة", 0)} حصة</td></tr>'
 
-    logo_html = _logo_img_html(70, 8)
-    today_str = date.today().strftime("%Y/%m/%d")
-    hijri_str = gregorian_to_hijri_approx(date.today())
-    signatures_html = _get_leadership_signatures_html()
-
     html_code = f"""<!DOCTYPE html>
-<html dir="rtl" lang="ar">
+<html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <title>تقرير حركية وحضور المعلمين</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
-        body {{ font-family: 'Cairo', sans-serif; margin: 20px; color: #1E293B; background: #FFF; direction: rtl; }}
-        .header {{ text-align: center; margin-bottom: 20px; border-bottom: 3px double #0F2552; padding-bottom: 12px; }}
-        .title {{ font-size: 22px; font-weight: 800; color: #0F2552; margin: 5px 0; }}
-        .sub-title {{ font-size: 14px; color: #475569; font-weight: 600; }}
-        .meta-info {{ display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 15px; background: #F8FAFC; padding: 10px 15px; border-radius: 8px; border: 1px solid #E2E8F0; }}
-        table {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; text-align: center; }}
-        th {{ background-color: #0F2552; color: white; padding: 10px; font-weight: 700; border: 1px solid #0F2552; }}
-        td {{ padding: 8px; border: 1px solid #CBD5E1; vertical-align: middle; }}
-        tr:nth-child(even) {{ background-color: #F8FAFC; }}
-        @media print {{
-            body {{ margin: 0; padding: 10mm; }}
-            .no-print {{ display: none !important; }}
-            @page {{ size: A4 portrait; margin: 10mm; }}
-        }}
-    </style>
+<meta charset="utf-8">
+<title>تقرير المعلمين</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+body {{ font-family:'Cairo',sans-serif; text-align:right; padding:25px; background:#FFF; color:#1E293B; direction:rtl; }}
+.header {{ text-align:center; border-bottom:3px solid #0F2552; padding-bottom:12px; margin-bottom:20px; }}
+h2 {{ color:#0F2552; margin:5px; font-weight:800; font-size:22px; }}
+table {{ width:100%; border-collapse:collapse; margin-top:10px; }}
+th, td {{ border:1px solid #CBD5E1; padding:10px; text-align:center; font-size:14px; }}
+th {{ background:#0F2552; color:white; font-weight:700; }}
+tr:nth-child(even) {{ background:#F8FAFC; }}
+</style>
 </head>
 <body>
-    <div class="header">
-        {logo_html}
-        <div class="title">المملكة العربية السعودية - وزارة التعليم</div>
-        <div class="sub-title">إدارة التعليم بمحافظة جدة | مدرسة متوسطة الثغر النموذجية</div>
-        <div style="font-size: 18px; font-weight: 800; color: #2563EB; margin-top: 10px;">تقرير متابعة كادر المعلمين خلال الفترة ({start_d} إلى {end_d})</div>
-    </div>
-    <div class="meta-info">
-        <span>📅 تاريخ التصدير: {today_str}</span>
-        <span>🌙 التقويم المستخدم: {cal_system} ({hijri_str})</span>
-        <span>👨‍🏫 عدد المعلمين: {len(teacher_summary_list)}</span>
-    </div>
-    <table>
-        <thead>
-            <tr>
-                <th style="width: 5%;">#</th>
-                <th style="width: 30%;">اسم المعلم</th>
-                <th style="width: 15%;">أيام الحضور</th>
-                <th style="width: 15%;">مرات الغياب</th>
-                <th style="width: 15%;">مرات التأخر</th>
-                <th style="width: 20%;">إجمالي الحصص المرصودة</th>
-            </tr>
-        </thead>
-        <tbody>
-            {rows_html}
-        </tbody>
-    </table>
-    {signatures_html}
+<div class="header">
+    {_logo_img_html()}<br>
+    <h2>🏫 تقرير حضور وغياب المعلمين</h2>
+    <p>الفترة من {start_d} إلى {end_d}</p>
+</div>
+<table>
+<thead>
+<tr><th>#</th><th>اسم المعلم</th><th>الحضور</th><th>الغياب</th><th>التأخر</th><th>الحصص المرصودة</th></tr>
+</thead>
+<tbody>
+{rows_html}
+</tbody>
+</table>
 </body>
 </html>"""
     return html_code
@@ -837,10 +848,10 @@ def generate_period_counts_report_html(counts_rows, report_label, hijri_label):
         body_rows = '<tr><td colspan="7" style="color:#64748B;padding:16px;">لا توجد بيانات مرصودة ضمن النطاق المحدد.</td></tr>'
     for g in grades_order:
         body_rows += (f'<tr style="background:#0F2552;color:#FFFFFF;">'
-                      f'<td colspan="7" style="text-align:right;font-weight:800;font-size:14px;padding:8px 12px;">🏫 {g}</td></tr>')
+                      f'<td colspan="7" style="text-align:right;font-weight:800;font-size:14px;">🏫 {g}</td></tr>')
         for s, rows in grouped[g].items():
             body_rows += (f'<tr style="background:#E0E7FF;">'
-                          f'<td colspan="7" style="text-align:right;font-weight:700;color:#0F2552;padding:6px 12px;">🚪 {s}</td></tr>')
+                          f'<td colspan="7" style="text-align:right;font-weight:700;color:#0F2552;">🚪 {s}</td></tr>')
             for r in rows:
                 seq += 1
                 cnt = int(r.get("عدد الطلاب", 0))
@@ -855,60 +866,45 @@ def generate_period_counts_report_html(counts_rows, report_label, hijri_label):
                               f'<td style="font-weight:800;color:#CA8A04;">{late}</td>'
                               f'<td style="color:#94A3B8;">{seq}</td></tr>')
 
-    logo_html = _logo_img_html(70, 8)
-    today_str = date.today().strftime("%Y/%m/%d")
-    signatures_html = _get_leadership_signatures_html()
-
     html_code = f"""<!DOCTYPE html>
-<html dir="rtl" lang="ar">
+<html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <title>تقرير تفصيلي للحصص والمعلمين وعدد الطلاب</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
-        body {{ font-family: 'Cairo', sans-serif; margin: 20px; color: #1E293B; background: #FFF; direction: rtl; }}
-        .header {{ text-align: center; margin-bottom: 20px; border-bottom: 3px double #0F2552; padding-bottom: 12px; }}
-        .title {{ font-size: 22px; font-weight: 800; color: #0F2552; margin: 5px 0; }}
-        .sub-title {{ font-size: 14px; color: #475569; font-weight: 600; }}
-        .meta-info {{ display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 15px; background: #F8FAFC; padding: 10px 15px; border-radius: 8px; border: 1px solid #E2E8F0; }}
-        table {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; text-align: center; }}
-        th {{ background-color: #0F2552; color: white; padding: 10px; font-weight: 700; border: 1px solid #0F2552; }}
-        td {{ padding: 8px; border: 1px solid #CBD5E1; vertical-align: middle; }}
-        @media print {{
-            body {{ margin: 0; padding: 10mm; }}
-            .no-print {{ display: none !important; }}
-            @page {{ size: A4 portrait; margin: 10mm; }}
-        }}
-    </style>
+<meta charset="utf-8">
+<title>تقرير الحصص والمعلمين وعدد الطلاب</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+body {{ font-family:'Cairo',sans-serif; text-align:right; padding:25px; background:#FFF; color:#1E293B; direction:rtl; }}
+.header {{ text-align:center; border-bottom:3px solid #0F2552; padding-bottom:12px; margin-bottom:18px; }}
+h2 {{ color:#0F2552; margin:5px; font-weight:800; font-size:22px; }}
+h4 {{ color:#4B5563; margin:5px; font-weight:700; font-size:16px; }}
+.meta {{ text-align:center; color:#64748B; font-size:13px; margin-bottom:16px; font-weight:600; }}
+table {{ width:100%; border-collapse:collapse; margin-top:10px; }}
+th, td {{ border:1px solid #CBD5E1; padding:10px; text-align:center; font-size:13px; }}
+th {{ background:#0F2552; color:white; font-weight:700; }}
+.footer {{ margin-top:22px; text-align:center; color:#94A3B8; font-size:12px; border-top:1px solid #E2E8F0; padding-top:10px; }}
+@media print {{ body {{ padding:10px; }} }}
+</style>
 </head>
 <body>
-    <div class="header">
-        {logo_html}
-        <div class="title">المملكة العربية السعودية - وزارة التعليم</div>
-        <div class="sub-title">إدارة التعليم بمحافظة جدة | مدرسة متوسطة الثغر النموذجية</div>
-        <div style="font-size: 18px; font-weight: 800; color: #2563EB; margin-top: 10px;">تقرير الحصص المعلمة وإحصائيات الطلاب ({report_label})</div>
-    </div>
-    <div class="meta-info">
-        <span>📅 التاريخ الميلادي: {today_str}</span>
-        <span>🌙 التاريخ الهجري: {hijri_label}</span>
-    </div>
-    <table>
-        <thead>
-            <tr>
-                <th style="width: 12%;">الحصة</th>
-                <th style="width: 32%;">اسم المعلم المرخص</th>
-                <th style="width: 14%;">إجمالي الطلاب</th>
-                <th style="width: 14%;">الحاضرون</th>
-                <th style="width: 14%;">الغائبون</th>
-                <th style="width: 10%;">المتأخرون</th>
-                <th style="width: 4%;">#</th>
-            </tr>
-        </thead>
-        <tbody>
-            {body_rows}
-        </tbody>
-    </table>
-    {signatures_html}
+<div class="header">
+    {_logo_img_html()}<br>
+    <h2>🏫 مدرسة متوسطة الثغر النموذجية</h2>
+    <h4>تقرير الحصص ومعلميها وعدد الطلاب المرصودين لكل فصل</h4>
+</div>
+<div class="meta">
+    📅 النطاق: {report_label} &nbsp;|&nbsp; 🌙 التاريخ الهجري: {hijri_label}
+</div>
+<table>
+<thead>
+<tr><th>الحصة</th><th>اسم المعلم</th><th>عدد الطلاب</th><th>الحاضرون</th><th>الغائبون</th><th>المتأخرون</th><th>#</th></tr>
+</thead>
+<tbody>
+{body_rows}
+</tbody>
+</table>
+<div class="footer">
+    تم توليد هذا التقرير آلياً من نظام تحضير متوسطة الثغر النموذجية
+</div>
 </body>
 </html>"""
     return html_code
@@ -961,72 +957,67 @@ def generate_charts_report_html(counts_rows, report_label, hijri_label):
                             f'<div class="chart-head"><h3>🚪 الفصل {s} — {g}</h3></div>'
                             f'<div class="chart">{bars}</div></div>')
 
-    logo_html = _logo_img_html(70, 8)
-    today_str = date.today().strftime("%Y/%m/%d")
-    signatures_html = ""
-
     html_code = f"""<!DOCTYPE html>
-<html dir="rtl" lang="ar">
+<html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <title>تقرير الرسوم البيانية للحضور والغياب والتأخر</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
-        body {{ font-family: 'Cairo', sans-serif; margin: 20px; color: #1E293B; background: #FFF; direction: rtl; }}
-        .header {{ text-align: center; margin-bottom: 20px; border-bottom: 3px double #0F2552; padding-bottom: 12px; }}
-        .title {{ font-size: 22px; font-weight: 800; color: #0F2552; margin: 5px 0; }}
-        .sub-title {{ font-size: 14px; color: #475569; font-weight: 600; }}
-        .meta-info {{ display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 20px; background: #F8FAFC; padding: 10px 15px; border-radius: 8px; border: 1px solid #E2E8F0; }}
-        .grade-title {{ font-size: 18px; font-weight: 800; color: #0F2552; background: #E0E7FF; padding: 10px 15px; border-radius: 8px; margin: 20px 0 10px 0; border-right: 5px solid #0F2552; }}
-        .chart-card {{ background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); page-break-inside: avoid; }}
-        .chart-head h3 {{ font-size: 15px; font-weight: 700; color: #1E293B; margin: 0 0 15px 0; }}
-        .chart {{ display: flex; gap: 15px; align-items: flex-end; height: 210px; padding-bottom: 25px; border-bottom: 2px solid #CBD5E1; overflow-x: auto; }}
-        .group {{ display: flex; flex-direction: column; align-items: center; min-width: 65px; }}
-        .bars {{ display: flex; gap: 4px; align-items: flex-end; height: 180px; }}
-        .bar-wrap {{ display: flex; flex-direction: column; align-items: center; width: 14px; }}
-        .val {{ font-size: 10px; font-weight: 800; margin-bottom: 3px; line-height: 1; }}
-        .vp {{ color: #16A34A; }}
-        .va {{ color: #DC2626; }}
-        .vl {{ color: #CA8A04; }}
-        .bar {{ width: 100%; border-radius: 3px 3px 0 0; transition: height 0.3s ease; }}
-        .bar.present {{ background-color: #16A34A; }}
-        .bar.absent {{ background-color: #DC2626; }}
-        .bar.late {{ background-color: #CA8A04; }}
-        .xlabel {{ font-size: 11px; font-weight: 700; color: #475569; margin-top: 8px; text-align: center; white-space: nowrap; }}
-        .legend {{ display: flex; justify-content: center; gap: 20px; margin-bottom: 15px; font-size: 13px; font-weight: 700; }}
-        .legend-item {{ display: flex; align-items: center; gap: 6px; }}
-        .dot {{ width: 12px; height: 12px; border-radius: 3px; display: inline-block; }}
-        @media print {{
-            body {{ margin: 0; padding: 10mm; }}
-            .no-print {{ display: none !important; }}
-            @page {{ size: A4 portrait; margin: 10mm; }}
-        }}
-    </style>
+<meta charset="utf-8">
+<title>الرسوم البيانية للحضور والغياب</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+body {{ font-family:'Cairo',sans-serif; text-align:right; padding:25px; background:#F8FAFC; color:#1E293B; direction:rtl; }}
+.header {{ text-align:center; border-bottom:3px solid #0F2552; padding-bottom:12px; margin-bottom:18px; }}
+h2 {{ color:#0F2552; margin:5px; font-weight:800; font-size:22px; }}
+h4 {{ color:#4B5563; margin:5px; font-weight:700; font-size:16px; }}
+.meta {{ text-align:center; color:#64748B; font-size:13px; margin-bottom:18px; font-weight:600; }}
+.legend {{ text-align:center; margin-bottom:18px; font-weight:700; font-size:13px; }}
+.legend span {{ display:inline-block; margin:0 10px; }}
+.legend i {{ display:inline-block; width:14px; height:14px; border-radius:3px; vertical-align:middle; margin-left:5px; }}
+.grade-title {{ background:#0F2552; color:#FFFFFF; font-weight:800; font-size:17px; padding:10px 16px; border-radius:10px; margin:22px 0 12px; }}
+.chart-card {{ background:#FFFFFF; border:1px solid #E2E8F0; border-radius:14px; padding:18px 18px 10px; margin-bottom:20px; box-shadow:0 2px 10px rgba(15,37,82,0.06); break-inside:avoid; }}.chart-head {{ display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #EEF2FF; padding-bottom:8px; margin-bottom:14px; }}
+.chart-head h3 {{ margin:0; color:#0F2552; font-weight:800; font-size:17px; }}
+.chart-sum {{ font-size:13px; color:#475569; font-weight:700; }}
+.chart {{ display:flex; align-items:flex-end; justify-content:space-around; gap:14px; min-height:220px; padding:10px 4px 0; border-bottom:2px solid #CBD5E1; flex-wrap:wrap; }}
+.group {{ display:flex; flex-direction:column; align-items:center; }}
+.bars {{ display:flex; align-items:flex-end; gap:8px; height:200px; }}
+.bar-wrap {{ display:flex; flex-direction:column; align-items:center; justify-content:flex-end; }}
+.val {{ font-size:12px; font-weight:800; margin-bottom:4px; }}
+.vp {{ color:#16A34A; }}
+.va {{ color:#DC2626; }}
+.vl {{ color:#CA8A04; }}
+.bar {{ width:30px; border-radius:6px 6px 0 0; }}
+.bar.present {{ background:linear-gradient(180deg,#22C55E,#16A34A); }}
+.bar.absent {{ background:linear-gradient(180deg,#F87171,#DC2626); }}
+.bar.late {{ background:linear-gradient(180deg,#FBBF24,#CA8A04); }}
+.xlabel {{ margin-top:8px; font-size:13px; font-weight:700; color:#0F2552; }}
+.footer {{ margin-top:22px; text-align:center; color:#94A3B8; font-size:12px; border-top:1px solid #E2E8F0; padding-top:10px; }}
+@media print {{ body {{ padding:10px; background:#FFF; }} .chart-card {{ box-shadow:none; }} }}
+</style>
 </head>
 <body>
-    <div class="header">
-        {logo_html}
-        <div class="title">المملكة العربية السعودية - وزارة التعليم</div>
-        <div class="sub-title">إدارة التعليم بمحافظة جدة | مدرسة متوسطة الثغر النموذجية</div>
-        <div style="font-size: 18px; font-weight: 800; color: #2563EB; margin-top: 10px;">تقرير الرسوم البيانية لحالات الحضور والغياب والتأخر ({report_label})</div>
-    </div>
-    <div class="meta-info">
-        <span>📅 التاريخ الميلادي: {today_str}</span>
-        <span>🌙 التاريخ الهجري: {hijri_label}</span>
-    </div>
-    <div class="legend">
-        <div class="legend-item"><span class="dot" style="background:#16A34A;"></span> حاضر</div>
-        <div class="legend-item"><span class="dot" style="background:#DC2626;"></span> غائب</div>
-        <div class="legend-item"><span class="dot" style="background:#CA8A04;"></span> متأخر</div>
-    </div>
-    {charts_html}
-    {signatures_html}
+<div class="header">
+    {_logo_img_html()}<br>
+    <h2>🏫 مدرسة متوسطة الثغر النموذجية</h2>
+    <h4>الرسوم البيانية للحضور والغياب والتأخر لكل صف وفصل</h4>
+</div>
+<div class="meta">
+    📅 النطاق: {report_label} &nbsp;|&nbsp; 🌙 التاريخ الهجري: {hijri_label}
+</div>
+<div class="legend">
+    <span><i style="background:#16A34A;"></i> الطلاب الحاضرون</span>
+    <span><i style="background:#DC2626;"></i> الطلاب الغائبون</span>
+    <span><i style="background:#CA8A04;"></i> الطلاب المتأخرون</span>
+</div>
+{charts_html}
+<div class="footer">
+    تم توليد هذا التقرير آلياً من نظام تحضير متوسطة الثغر النموذجية
+</div>
 </body>
 </html>"""
     return html_code
 
 def generate_landscape_grid_html(counts_rows, report_label, hijri_label):
-    """تقرير عرضي (Landscape) يجمع كل فصول المدرسة في صفحة واحدة: صفوف = الفصول، أعمدة = الحصص، وكل خلية تظهر اسم المعلم وعدد الحضور."""
+    """تقرير عرضي (Landscape) يجمع كل فصول المدرسة في صفحة واحدة:
+    صفوف = الفصول، أعمدة = الحصص، وكل خلية تظهر اسم المعلم وعدد الحضور."""
     import re as _re_grid
     rows_order = []
     grid = {}
@@ -1050,7 +1041,6 @@ def generate_landscape_grid_html(counts_rows, report_label, hijri_label):
     def _pk(pname):
         _m = _re_grid.search(r"\d+", str(pname))
         return int(_m.group()) if _m else 999
-
     periods_order = sorted(_periods_seen, key=_pk) if _periods_seen else [f"الحصة {i}" for i in range(1, 8)]
 
     head_cells = "".join(f'<th>{p}</th>' for p in periods_order)
@@ -1070,73 +1060,62 @@ def generate_landscape_grid_html(counts_rows, report_label, hijri_label):
                 cells += '<td class="cell empty">—</td>'
         body_rows += (f'<tr><td class="rowhead"><b>{s}</b><br><small>{g}</small></td>{cells}</tr>')
 
-    logo_html = _logo_img_html(60, 6)
-    today_str = date.today().strftime("%Y/%m/%d")
-    signatures_html = _get_leadership_signatures_html()
-
     html_code = f"""<!DOCTYPE html>
-<html dir="rtl" lang="ar">
+<html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <title>التقرير المجمع الشامل لجميع فصول المدرسة</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
-        body {{ font-family: 'Cairo', sans-serif; margin: 15px; color: #1E293B; background: #FFF; direction: rtl; }}
-        .header {{ text-align: center; margin-bottom: 12px; border-bottom: 2px solid #0F2552; padding-bottom: 8px; }}
-        .title {{ font-size: 18px; font-weight: 800; color: #0F2552; margin: 2px 0; }}
-        .sub-title {{ font-size: 12px; color: #475569; font-weight: 600; }}
-        .meta-info {{ display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: #334155; margin-bottom: 10px; background: #F8FAFC; padding: 6px 12px; border-radius: 6px; border: 1px solid #E2E8F0; }}
-        table {{ width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; }}
-        th {{ background-color: #0F2552; color: white; padding: 6px; font-weight: 700; border: 1px solid #0F2552; font-size: 11px; }}
-        td {{ padding: 4px; border: 1px solid #CBD5E1; vertical-align: middle; }}
-        .rowhead {{ background: #F1F5F9; font-weight: 700; color: #0F2552; width: 120px; }}
-        .cell {{ text-align: center; font-size: 10px; }}
-        .tch {{ font-weight: 700; color: #1E293B; margin-bottom: 2px; font-size: 10px; }}
-        .cnt {{ display: flex; gap: 3px; justify-content: center; font-size: 9px; font-weight: 700; }}
-        .pres {{ color: #16A34A; }}
-        .abs {{ color: #DC2626; }}
-        .lat {{ color: #CA8A04; }}
-        .empty {{ color: #94A3B8; font-size: 12px; }}
-        @media print {{
-            body {{ margin: 0; padding: 5mm; }}
-            .no-print {{ display: none !important; }}
-            @page {{ size: A4 landscape; margin: 5mm; }}
-        }}
-    </style>
+<meta charset="utf-8">
+<title>تقرير الحصص المجمّع — كل الفصول</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+@page {{ size: A4 landscape; margin: 10mm; }}
+body {{ font-family:'Cairo',sans-serif; text-align:right; padding:18px; background:#FFF; color:#1E293B; direction:rtl; }}
+.header {{ text-align:center; border-bottom:3px solid #0F2552; padding-bottom:10px; margin-bottom:12px; }}
+h2 {{ color:#0F2552; margin:4px; font-weight:800; font-size:20px; }}
+h4 {{ color:#4B5563; margin:4px; font-weight:700; font-size:14px; }}
+.meta {{ text-align:center; color:#64748B; font-size:12px; margin-bottom:12px; font-weight:600; }}
+table {{ width:100%; border-collapse:collapse; table-layout:fixed; }}
+th, td {{ border:1px solid #CBD5E1; padding:6px 4px; text-align:center; font-size:11px; vertical-align:middle; }}
+th {{ background:#0F2552; color:#FFFFFF; font-weight:700; font-size:12px; }}
+.rowhead {{ background:#E0E7FF; color:#0F2552; font-weight:800; font-size:12px; width:90px; }}
+.rowhead small {{ color:#475569; font-weight:600; font-size:10px; }}
+.cell .tch {{ font-weight:700; color:#1E293B; margin-bottom:3px; min-height:14px; }}
+.cell .cnt {{ display:flex; flex-direction:column; gap:2px; align-items:center; }}
+.pres {{ color:#16A34A; font-weight:800; }}
+.abs {{ color:#DC2626; font-weight:800; }}
+.lat {{ color:#CA8A04; font-weight:800; }}
+.cell.empty {{ color:#CBD5E1; font-weight:700; }}
+.footer {{ margin-top:16px; text-align:center; color:#94A3B8; font-size:11px; border-top:1px solid #E2E8F0; padding-top:8px; }}
+</style>
 </head>
 <body>
-    <div class="header">
-        {logo_html}
-        <div class="title">المملكة العربية السعودية - وزارة التعليم</div>
-        <div class="sub-title">إدارة التعليم بمحافظة جدة | مدرسة متوسطة الثغر النموذجية</div>
-        <div style="font-size: 15px; font-weight: 800; color: #2563EB; margin-top: 4px;">التقرير المجمّع لمتابعة جميع الفصول للحصص ({report_label})</div>
-    </div>
-    <div class="meta-info">
-        <span>📅 التاريخ الميلادي: {today_str}</span>
-        <span>🌙 التاريخ الهجري: {hijri_label}</span>
-    </div>
-    <table>
-        <thead>
-            <tr>
-                <th style="width: 100px;">الفصل / الصف</th>
-                {head_cells}
-            </tr>
-        </thead>
-        <tbody>
-            {body_rows}
-        </tbody>
-    </table>
-    {signatures_html}
+<div class="header">
+    {_logo_img_html()}<br>
+    <h2>🏫 مدرسة متوسطة الثغر النموذجية</h2>
+    <h4>التقرير المجمّع لكل فصول المدرسة حسب الحصص (المعلم / الحضور)</h4>
+</div>
+<div class="meta">
+    📅 النطاق: {report_label} &nbsp;|&nbsp; 🌙 التاريخ الهجري: {hijri_label}
+</div>
+<table>
+<thead>
+<tr><th class="rowhead" style="background:#0F2552;color:#FFF;">الفصل / الصف</th>{head_cells}</tr>
+</thead>
+<tbody>
+{body_rows}
+</tbody>
+</table>
+<div class="footer">
+    تم توليد هذا التقرير آلياً من نظام تحضير متوسطة الثغر النموذجية
+</div>
 </body>
 </html>"""
     return html_code
 
-### =========================================================
-### اختيار لوحة التحكم
-### =========================================================
+# =========================================================
+# اختيار لوحة التحكم
+# =========================================================
 if _logo_data_uri():
     st.sidebar.markdown(f"<div style='text-align:center; margin-bottom:10px;'><img src='{_logo_data_uri()}' alt='شعار مدارس الثغر النموذجية' style='max-width:160px; width:80%; height:auto;' /></div>", unsafe_allow_html=True)
-
 st.sidebar.title("📌 نظام المتابعة")
 st.sidebar.markdown("<div style='background:#1E293B; border-right:4px solid #3B82F6; border-radius:8px; padding:10px; margin-bottom:12px; font-weight:700; color:#F8FAFC;'>👇 اختر لوحة التحكم:</div>", unsafe_allow_html=True)
 role = st.sidebar.radio(
@@ -1146,10 +1125,11 @@ role = st.sidebar.radio(
 )
 st.write("")
 
-### =========================================================
-### 7. واجهة المعلم (رصد حضور الطلاب)
-### =========================================================
+# =========================================================
+# 7. واجهة المعلم (رصد حضور الطلاب)
+# =========================================================
 if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
+
     if _logo_data_uri():
         st.markdown(f"<div style='text-align:center; margin-bottom:10px;'><img src='{_logo_data_uri()}' alt='شعار مدارس الثغر النموذجية' style='height:90px; width:auto;' /></div>", unsafe_allow_html=True)
 
@@ -1253,9 +1233,9 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
     else:
         st.error(f"❌ كلمة المرور غير صحيحة للمعلم ({teacher_name})! يرجى التأكد وإعادة المحاولة.")
 
-### =========================================================
-### 8. حساب الوكيل والمدير
-### =========================================================
+# =========================================================
+# 8. حساب الوكيل والمدير
+# =========================================================
 else:
     if 'admin_authenticated' not in st.session_state:
         st.session_state['admin_authenticated'] = False
