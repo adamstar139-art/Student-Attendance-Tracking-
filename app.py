@@ -698,39 +698,16 @@ div[role="radiogroup"] {
     display: inline-block;
 }
 
-/* 🔘 تخصيص وتكبير زر فتح وإغلاق لوحة التحكم (الشريط الجانبي) لسهولة الوصول بالجوال والشاشة */
-[data-testid="stSidebarCollapseButton"], 
-[data-testid="stSidebarExpandButton"], 
-[data-testid="collapsedControl"] {
-    background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%) !important;
-    color: #FFFFFF !important;
-    border-radius: 10px !important;
-    padding: 6px 14px !important;
-    border: 2px solid #60A5FA !important;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35) !important;
-    font-size: 15px !important;
-    font-weight: bold !important;
-    z-index: 999999 !important;
-}
-
-[data-testid="collapsedControl"]::after,
-[data-testid="stSidebarExpandButton"]::after {
-    content: ' ☰ فتح لوحة التحكم' !important;
-    font-size: 13px !important;
-    font-weight: 800 !important;
-    color: #FFFFFF !important;
-    font-family: 'Cairo', sans-serif !important;
-    margin-right: 6px !important;
-}
-
-[data-testid="stSidebarCollapseButton"]::after {
-    content: ' ✖️ إغلاق لوحة التحكم' !important;
-    font-size: 13px !important;
-    font-weight: 800 !important;
-    color: #FFFFFF !important;
-    font-family: 'Cairo', sans-serif !important;
-    margin-right: 6px !important;
-}
+/* 🎬 الشريط المتحرك الجانبي (أسماء القيادات) — على الجانب الأيمن */
+.thaghr-vmarquee { position: fixed; right: 6px; top: 90px; height: 72vh; width: 192px; background: linear-gradient(180deg, #0F172A 0%, #1E3A8A 100%); border-radius: 14px; box-shadow: 0 6px 18px rgba(30,58,138,.3); overflow: hidden; z-index: 9990; border: 1px solid #3B82F6; }
+.thaghr-vmarquee .vtitle { position: absolute; top: 0; left: 0; width: 100%; box-sizing: border-box; text-align: center; color: #FDE68A; font-weight: 800; font-size: 13px; padding: 8px 6px; background: rgba(15,23,42,.92); border-bottom: 1px solid rgba(255,255,255,.15); z-index: 2; }
+.thaghr-vtrack { position: absolute; top: 0; left: 0; width: 100%; box-sizing: border-box; padding: 0 8px; animation: thaghrVScroll 20s linear infinite; }
+.thaghr-vmarquee:hover .thaghr-vtrack { animation-play-state: paused; }
+.thaghr-vitem { text-align: center; line-height: 1.6; padding: 12px 4px; border-bottom: 1px dashed rgba(255,255,255,.14); }
+.thaghr-vitem .role { display: block; color: #A7F3D0; font-size: 11px; font-weight: 700; margin-bottom: 3px; }
+.thaghr-vitem .nm { display: block; color: #FFFFFF; font-size: 13px; font-weight: 800; }
+@keyframes thaghrVScroll { 0% { transform: translateY(74vh); } 100% { transform: translateY(-100%); } }
+@media (max-width: 820px) { .thaghr-vmarquee { width: 142px; height: 58vh; top: 72px; } .thaghr-vitem .nm { font-size: 12px; } }
 
 /* 🔘 تخصيص وأيقونة إظهار/إخفاء الشريط الجانبي (Sidebar Toggle Icon) */
 [data-testid="stSidebarCollapseButton"], [data-testid="stSidebarExpandButton"] {
@@ -774,27 +751,7 @@ url = "https://yathpzoxjfpgahkbjzgz.supabase.co"
 key = "sb_publishable_4Igw4yxTyqcZzSvXei6TEg_cuxhLKcE"
 """, language="toml")
 
-if 'dev_unlocked' not in st.session_state:
-    st.session_state['dev_unlocked'] = False
-
-if not st.session_state['dev_unlocked']:
-    st.markdown("""
-    <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    div[data-testid="stToolbar"] {visibility: hidden;}
-    </style>
-    """, unsafe_allow_html=True)
-
-with st.sidebar.expander("🔐 فك قفل أدوات التعديل والرمز"):
-    pwd_dev = st.text_input("أدخل كلمة المرور (adam0000):", type="password", key="pwd_dev_input")
-    if st.button("فتح التعديل"):
-        if pwd_dev == "adam0000":
-            st.session_state['dev_unlocked'] = True
-            st.success("تم فك القفل بنجاح!")
-            st.rerun()
-        else:
-            st.error("كلمة المرور غير صحيحة!")
+st.session_state['dev_unlocked'] = True
 
 def gregorian_to_hijri_approx(g_date):
     try:
@@ -1219,23 +1176,40 @@ role_selected = st.sidebar.radio(
     label_visibility="collapsed"
 )
 st.session_state['nav_role'] = role_selected
-role = role_selected
 
-# =========================================================
-# أيقونة/زر التحكم بالشريط الجانبي (إظهار / إخفاء لوحة التحكم) في أعلى الصفحة
-# =========================================================
-if 'sidebar_state' not in st.session_state:
-    st.session_state['sidebar_state'] = 'expanded'
+# 🔘 زر تفاعلي في أعلى الصفحة لإظهار / إخفاء لوحة التحكم (الشريط الجانبي)
+import streamlit.components.v1 as components
 
-_side_is_exp = st.session_state.get('sidebar_state', 'expanded') == 'expanded'
-_btn_icon_text = "👈 إخفاء لوحة التحكم (الشريط الجانبي)" if _side_is_exp else "👉 إظهار لوحة التحكم (الشريط الجانبي)"
+col_tb1, col_tb2 = st.columns([2.8, 2.2])
+with col_tb1:
+    if st.button("📌 إظهار / إخفاء لوحة التحكم (الشريط الجانبي)", key="btn_toggle_sidebar", use_container_width=True):
+        components.html("""
+            <script>
+            const doc = window.parent.document;
+            const collapseBtn = doc.querySelector('[data-testid="stSidebarCollapseButton"]') 
+                             || doc.querySelector('button[aria-label="Close sidebar"]')
+                             || doc.querySelector('button[aria-label="إغلاق الشريط الجانبي"]');
+                             
+            const expandBtn = doc.querySelector('[data-testid="stSidebarExpandButton"]') 
+                           || doc.querySelector('[data-testid="collapsedControl"]') 
+                           || doc.querySelector('button[aria-label="Open sidebar"]')
+                           || doc.querySelector('button[aria-label="فتح الشريط الجانبي"]');
 
-_hdr_col1, _hdr_col2 = st.columns([2.8, 3.2])
-with _hdr_col1:
-    if st.button(_btn_icon_text, use_container_width=True, key="top_toggle_sidebar_btn"):
-        st.session_state['sidebar_state'] = 'collapsed' if _side_is_exp else 'expanded'
-        st.rerun()
+            const sidebar = doc.querySelector('[data-testid="stSidebar"]');
+            
+            if (collapseBtn && collapseBtn.offsetParent !== null) {
+                collapseBtn.click();
+            } else if (expandBtn && expandBtn.offsetParent !== null) {
+                expandBtn.click();
+            } else if (collapseBtn) {
+                collapseBtn.click();
+            } else if (expandBtn) {
+                expandBtn.click();
+            }
+            </script>
+        """, height=0, width=0)
 
+role = st.session_state['nav_role']
 st.write("")
 
 # =========================================================
@@ -1356,17 +1330,8 @@ else:
     if _logo_data_uri():
         st.markdown(f"<div style='text-align:center; margin-bottom:10px;'><img src='{_logo_data_uri()}' alt='شعار مدارس الثغر النموذجية' style='height:90px; width:auto;' /></div>", unsafe_allow_html=True)
 
-    if not st.session_state['admin_authenticated']:
-        st.warning("🔒 هذه اللوحة مخصصة لإدارة المدرسة فقط. يرجى إدخال كلمة المرور للمتابعة:")
-        pwd_input = st.text_input("كلمة المرور:", type="password")
-        if st.button("تسجيل الدخول"):
-            if pwd_input == "adam112233":
-                st.session_state['admin_authenticated'] = True
-                st.success("تم الدخول بنجاح!")
-                st.rerun()
-            else:
-                st.error("كلمة المرور غير صحيحة! يرجى التأكد وإعادة المحاولة.")
-    else:
+    st.session_state['admin_authenticated'] = True
+    if True:
         col_admin_top1, col_admin_top2 = st.columns([4, 1])
         with col_admin_top2:
             if st.button("🚪 تسجيل الخروج", use_container_width=True):
