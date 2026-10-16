@@ -963,7 +963,7 @@ def generate_charts_report_html(counts_rows, report_label, hijri_label):
 
     logo_html = _logo_img_html(70, 8)
     today_str = date.today().strftime("%Y/%m/%d")
-    signatures_html = _get_leadership_signatures_html()
+    signatures_html = ""
 
     html_code = f"""<!DOCTYPE html>
 <html dir="rtl" lang="ar">
