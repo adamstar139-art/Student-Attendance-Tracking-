@@ -751,7 +751,27 @@ url = "https://yathpzoxjfpgahkbjzgz.supabase.co"
 key = "sb_publishable_4Igw4yxTyqcZzSvXei6TEg_cuxhLKcE"
 """, language="toml")
 
-st.session_state['dev_unlocked'] = True
+if 'dev_unlocked' not in st.session_state:
+    st.session_state['dev_unlocked'] = False
+
+if not st.session_state['dev_unlocked']:
+    st.markdown("""
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    div[data-testid="stToolbar"] {visibility: hidden;}
+    </style>
+    """, unsafe_allow_html=True)
+
+with st.sidebar.expander("🔐 فك قفل أدوات التعديل والرمز"):
+    pwd_dev = st.text_input("أدخل كلمة المرور (adam0000):", type="password", key="pwd_dev_input")
+    if st.button("فتح التعديل"):
+        if pwd_dev == "adam0000":
+            st.session_state['dev_unlocked'] = True
+            st.success("تم فك القفل بنجاح!")
+            st.rerun()
+        else:
+            st.error("كلمة المرور غير صحيحة!")
 
 def gregorian_to_hijri_approx(g_date):
     try:
@@ -1154,60 +1174,73 @@ th {{ background:#0F2552; color:#FFFFFF; font-weight:700; font-size:12px; }}
     return html_code
 
 # =========================================================
-# اختيار لوحة التحكم - الشريط الجانبي (لوحة التحكم)
+# اختيار لوحة التحكم
 # =========================================================
 if _logo_data_uri():
     st.sidebar.markdown(f"<div style='text-align:center; margin-bottom:10px;'><img src='{_logo_data_uri()}' alt='شعار مدارس الثغر النموذجية' style='max-width:160px; width:80%; height:auto;' /></div>", unsafe_allow_html=True)
+st.sidebar.title("📌 نظام المتابعة")
+st.sidebar.markdown("<div style='background:#1E293B; border-right:4px solid #3B82F6; border-radius:8px; padding:10px; margin-bottom:12px; font-weight:700; color:#F8FAFC;'>👇 اختر لوحة التحكم:</div>", unsafe_allow_html=True)
 
-st.sidebar.title("📌 لوحة التحكم")
-st.sidebar.markdown("<div style='background:#1E293B; border-right:4px solid #3B82F6; border-radius:8px; padding:10px; margin-bottom:12px; font-weight:700; color:#F8FAFC;'>👇 اختر الصفحة:</div>", unsafe_allow_html=True)
-
+# =========================================================
+# اختيار لوحة التحكم — متاح دائمًا (أعلى الصفحة + الشريط الجانبي)
+# يحل مشكلة عدم العودة للوحة التحكم على الجوال عند إغلاق الشريط الجانبي
+# =========================================================
 _ROLE_OPTIONS = ["👨‍🏫 حساب المعلم (رصد الحضور)", "👔 حساب الوكيل والمدير (المتابعة والتصدير)"]
 if 'nav_role' not in st.session_state:
     st.session_state['nav_role'] = _ROLE_OPTIONS[0]
 
+def _sync_role_from_main():
+    st.session_state['nav_role'] = st.session_state.get('nav_role_main', _ROLE_OPTIONS[0])
+
+def _sync_role_from_side():
+    st.session_state['nav_role'] = st.session_state.get('nav_role_side', _ROLE_OPTIONS[0])
+
 _cur_role_idx = _ROLE_OPTIONS.index(st.session_state['nav_role']) if st.session_state['nav_role'] in _ROLE_OPTIONS else 0
 
-role_selected = st.sidebar.radio(
-    "اختر الصفحة:",
+# محدّد لوحة التحكم داخل الشريط الجانبي (كما كان)
+st.sidebar.radio(
+    "اختر لوحة التحكم:",
     _ROLE_OPTIONS,
     index=_cur_role_idx,
-    key='nav_role_sidebar_select',
+    key='nav_role_side',
+    on_change=_sync_role_from_side,
     label_visibility="collapsed"
 )
-st.session_state['nav_role'] = role_selected
 
-# 🔘 زر تفاعلي في أعلى الصفحة لإظهار / إخفاء لوحة التحكم (الشريط الجانبي)
-import streamlit.components.v1 as components
+# 🎬 التحكم بإنارة وتصميم الشاشة: إظهار/إخفاء الشريط الجانبي والشريط المتحرك
+if 'show_marquee' not in st.session_state:
+    st.session_state['show_marquee'] = True
+if 'sidebar_state' not in st.session_state:
+    st.session_state['sidebar_state'] = 'expanded'
 
-col_tb1, col_tb2 = st.columns([2.8, 2.2])
-with col_tb1:
-    if st.button("📌 إظهار / إخفاء لوحة التحكم (الشريط الجانبي)", key="btn_toggle_sidebar", use_container_width=True):
-        components.html("""
-            <script>
-            const doc = window.parent.document;
-            const collapseBtn = doc.querySelector('[data-testid="stSidebarCollapseButton"]') 
-                             || doc.querySelector('button[aria-label="Close sidebar"]')
-                             || doc.querySelector('button[aria-label="إغلاق الشريط الجانبي"]');
-                             
-            const expandBtn = doc.querySelector('[data-testid="stSidebarExpandButton"]') 
-                           || doc.querySelector('[data-testid="collapsedControl"]') 
-                           || doc.querySelector('button[aria-label="Open sidebar"]')
-                           || doc.querySelector('button[aria-label="فتح الشريط الجانبي"]');
+_mq_c1, _mq_c2, _mq_c3 = st.columns([1.6, 1.6, 3.2])
+with _mq_c1:
+    _side_is_exp = st.session_state.get('sidebar_state', 'expanded') == 'expanded'
+    _side_label = "👈 إخفاء الشريط الجانبي" if _side_is_exp else "👉 إظهار الشريط الجانبي"
+    if st.button(_side_label, use_container_width=True, key="toggle_sidebar_btn"):
+        st.session_state['sidebar_state'] = 'collapsed' if _side_is_exp else 'expanded'
+        st.rerun()
 
-            const sidebar = doc.querySelector('[data-testid="stSidebar"]');
-            
-            if (collapseBtn && collapseBtn.offsetParent !== null) {
-                collapseBtn.click();
-            } else if (expandBtn && expandBtn.offsetParent !== null) {
-                expandBtn.click();
-            } else if (collapseBtn) {
-                collapseBtn.click();
-            } else if (expandBtn) {
-                expandBtn.click();
-            }
-            </script>
-        """, height=0, width=0)
+with _mq_c2:
+    _mq_label = "🙈 إخفاء الشريط المتحرك" if st.session_state['show_marquee'] else "🎬 إظهار الشريط المتحرك"
+    if st.button(_mq_label, use_container_width=True, key="toggle_marquee_btn"):
+        st.session_state['show_marquee'] = not st.session_state['show_marquee']
+        st.rerun()
+
+if st.session_state['show_marquee']:
+    st.markdown("<div class='thaghr-vmarquee'><div class='vtitle'>🏫 قيادة مدارس الثغر</div><div class='thaghr-vtrack'><div class='thaghr-vitem'><span class='role'>مدير المدرسة</span><span class='nm'>إبراهيم بن موسى التميمي</span></div><div class='thaghr-vitem'><span class='role'>وكيل الشؤون التعليمية</span><span class='nm'>محمد مبروك السيد</span></div><div class='thaghr-vitem'><span class='role'>وكيل شؤون الطلاب</span><span class='nm'>صالح بن عبدالله الدعجاني</span></div><div class='thaghr-vitem'><span class='role'>المسؤول التقني والمنصة</span><span class='nm'>أ. محمد سامي السعيد</span></div></div></div>", unsafe_allow_html=True)
+
+# محدّد لوحة التحكم أعلى الصفحة الرئيسية (يظهر دائمًا حتى ولو أُغلق الشريط الجانبي)
+st.markdown("<div style='background:#EFF6FF; border:1px solid #3B82F6; border-radius:10px; padding:8px 12px; margin-bottom:6px; font-weight:700; color:#1E3A8A; text-align:center;'>📌 التنقل بين لوحات التحكم</div>", unsafe_allow_html=True)
+st.radio(
+    "اختر لوحة التحكم:",
+    _ROLE_OPTIONS,
+    index=_cur_role_idx,
+    key='nav_role_main',
+    on_change=_sync_role_from_main,
+    horizontal=True,
+    label_visibility="collapsed"
+)
 
 role = st.session_state['nav_role']
 st.write("")
@@ -1330,8 +1363,17 @@ else:
     if _logo_data_uri():
         st.markdown(f"<div style='text-align:center; margin-bottom:10px;'><img src='{_logo_data_uri()}' alt='شعار مدارس الثغر النموذجية' style='height:90px; width:auto;' /></div>", unsafe_allow_html=True)
 
-    st.session_state['admin_authenticated'] = True
-    if True:
+    if not st.session_state['admin_authenticated']:
+        st.warning("🔒 هذه اللوحة مخصصة لإدارة المدرسة فقط. يرجى إدخال كلمة المرور للمتابعة:")
+        pwd_input = st.text_input("كلمة المرور:", type="password")
+        if st.button("تسجيل الدخول"):
+            if pwd_input == "adam112233":
+                st.session_state['admin_authenticated'] = True
+                st.success("تم الدخول بنجاح!")
+                st.rerun()
+            else:
+                st.error("كلمة المرور غير صحيحة! يرجى التأكد وإعادة المحاولة.")
+    else:
         col_admin_top1, col_admin_top2 = st.columns([4, 1])
         with col_admin_top2:
             if st.button("🚪 تسجيل الخروج", use_container_width=True):
