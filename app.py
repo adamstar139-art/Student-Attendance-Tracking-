@@ -678,6 +678,15 @@ div[role="radiogroup"] {
     font-weight: bold;
     display: inline-block;
 }
+
+/* 🎬 الشريط المتحرك (أسماء القيادات المدرسية) */
+.thaghr-marquee-wrap { background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 100%); border-radius: 12px; padding: 10px 0; margin: 4px 0 14px; overflow: hidden; box-shadow: 0 4px 14px rgba(30,58,138,.25); border: 1px solid #3B82F6; direction: ltr; }
+.thaghr-marquee-row { width: 100%; overflow: hidden; white-space: nowrap; }
+.thaghr-track { display: inline-block; white-space: nowrap; padding-left: 100%; will-change: transform; }
+.thaghr-t1 { color: #FDE68A; font-weight: 800; font-size: 16px; animation: thaghrScroll 24s linear infinite; }
+.thaghr-t2 { color: #A7F3D0; font-weight: 800; font-size: 15px; animation: thaghrScroll 19s linear infinite; }
+.thaghr-marquee-wrap:hover .thaghr-track { animation-play-state: paused; }
+@keyframes thaghrScroll { 0% { transform: translateX(0%); } 100% { transform: translateX(-100%); } }
 </style>
 """, unsafe_allow_html=True)
 
@@ -1144,6 +1153,20 @@ st.sidebar.radio(
     on_change=_sync_role_from_side,
     label_visibility="collapsed"
 )
+
+# 🎬 الشريط المتحرك (أسماء القيادات) مع مفتاح الإظهار/الإخفاء
+if 'show_marquee' not in st.session_state:
+    st.session_state['show_marquee'] = True
+
+_mq_c1, _mq_c2 = st.columns([1.4, 3.6])
+with _mq_c1:
+    _mq_label = "🙈 إخفاء الشريط المتحرك" if st.session_state['show_marquee'] else "🎬 إظهار الشريط المتحرك"
+    if st.button(_mq_label, use_container_width=True, key="toggle_marquee_btn"):
+        st.session_state['show_marquee'] = not st.session_state['show_marquee']
+        st.rerun()
+
+if st.session_state['show_marquee']:
+    st.markdown("<div class='thaghr-marquee-wrap'><div class='thaghr-marquee-row'><span class='thaghr-track thaghr-t1'>🏫 مدارس الثغر النموذجية الأهلية &nbsp;&nbsp;|&nbsp;&nbsp; وكيل شؤون الطلاب: صالح بن عبدالله الدعجاني &nbsp;&nbsp;•&nbsp;&nbsp; وكيل الشؤون التعليمية: محمد مبروك السيد &nbsp;&nbsp;•&nbsp;&nbsp; مدير المدرسة: إبراهيم بن موسى التميمي</span></div><div class='thaghr-marquee-row'><span class='thaghr-track thaghr-t2'>💻 المسؤول التقني والمنصة: أ. محمد سامي السعيد</span></div></div>", unsafe_allow_html=True)
 
 # محدّد لوحة التحكم أعلى الصفحة الرئيسية (يظهر دائمًا حتى ولو أُغلق الشريط الجانبي)
 st.markdown("<div style='background:#EFF6FF; border:1px solid #3B82F6; border-radius:10px; padding:8px 12px; margin-bottom:6px; font-weight:700; color:#1E3A8A; text-align:center;'>📌 التنقل بين لوحات التحكم</div>", unsafe_allow_html=True)
