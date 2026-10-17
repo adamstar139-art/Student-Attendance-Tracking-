@@ -24,6 +24,35 @@ def _logo_img_html(height=72, margin_bottom=8):
         return ""
     return f'<img src="{uri}" alt="شعار مدارس الثغر النموذجية" style="height:{height}px; width:auto; margin-bottom:{margin_bottom}px; display:inline-block;" />'
 
+def _signatures_html():
+    """كتلة توقيع القيادات الرسمية أسفل جميع التقارير القابلة للطباعة/التصدير (CSS مدمج قابل للطباعة)."""
+    return """
+<div style="margin-top:34px; padding-top:18px; border-top:2px solid #0F2552; page-break-inside:avoid; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
+    <div style="display:flex; flex-wrap:wrap; justify-content:space-around; gap:18px; text-align:center;">
+        <div style="flex:1; min-width:180px;">
+            <div style="color:#64748B; font-size:12px; font-weight:600; margin-bottom:6px;">مدير المدرسة</div>
+            <div style="color:#0F2552; font-size:14px; font-weight:800;">أ.إبراهيم بن موسى التميمي</div>
+            <div style="color:#CBD5E1; margin-top:8px; font-size:11px;">التوقيع: .........................</div>
+        </div>
+        <div style="flex:1; min-width:180px;">
+            <div style="color:#64748B; font-size:12px; font-weight:600; margin-bottom:6px;">وكيل الشؤون التعليمية</div>
+            <div style="color:#0F2552; font-size:14px; font-weight:800;">أ.محمد مبروك السيد</div>
+            <div style="color:#CBD5E1; margin-top:8px; font-size:11px;">التوقيع: .........................</div>
+        </div>
+        <div style="flex:1; min-width:180px;">
+            <div style="color:#64748B; font-size:12px; font-weight:600; margin-bottom:6px;">وكيل شؤون الطلاب</div>
+            <div style="color:#0F2552; font-size:14px; font-weight:800;">أ.صالح بن عبدالله الدعجاني</div>
+            <div style="color:#CBD5E1; margin-top:8px; font-size:11px;">التوقيع: .........................</div>
+        </div>
+        <div style="flex:1; min-width:180px;">
+            <div style="color:#64748B; font-size:12px; font-weight:600; margin-bottom:6px;">المسؤول التقني والمنصة</div>
+            <div style="color:#0F2552; font-size:14px; font-weight:800;">أ. محمد سامي السعيد</div>
+            <div style="color:#CBD5E1; margin-top:8px; font-size:11px;">التوقيع: .........................</div>
+        </div>
+    </div>
+</div>
+"""
+
 # =========================================================
 # 0. ربط قاعدة البيانات السحابية الدائمة (Supabase Cloud)
 # =========================================================
@@ -762,6 +791,7 @@ tr:nth-child(even) {{ background:#F8FAFC; }}
 {rows_html}
 </tbody>
 </table>
+{_signatures_html()}
 </body>
 </html>"""
     return html_code
@@ -806,6 +836,7 @@ tr:nth-child(even) {{ background:#F8FAFC; }}
 {rows_html}
 </tbody>
 </table>
+{_signatures_html()}
 </body>
 </html>"""
     return html_code
@@ -883,6 +914,7 @@ th {{ background:#0F2552; color:white; font-weight:700; }}
 {body_rows}
 </tbody>
 </table>
+{_signatures_html()}
 <div class="footer">
     تم توليد هذا التقرير آلياً من نظام تحضير متوسطة الثغر النموذجية
 </div>
@@ -989,6 +1021,7 @@ h4 {{ color:#4B5563; margin:5px; font-weight:700; font-size:16px; }}
     <span><i style="background:#CA8A04;"></i> الطلاب المتأخرون</span>
 </div>
 {charts_html}
+{_signatures_html()}
 <div class="footer">
     تم توليد هذا التقرير آلياً من نظام تحضير متوسطة الثغر النموذجية
 </div>
@@ -1085,6 +1118,7 @@ th {{ background:#0F2552; color:#FFFFFF; font-weight:700; font-size:12px; }}
 {body_rows}
 </tbody>
 </table>
+{_signatures_html()}
 <div class="footer">
     تم توليد هذا التقرير آلياً من نظام تحضير متوسطة الثغر النموذجية
 </div>
