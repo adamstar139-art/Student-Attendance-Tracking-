@@ -694,27 +694,8 @@ url = "https://yathpzoxjfpgahkbjzgz.supabase.co"
 key = "sb_publishable_4Igw4yxTyqcZzSvXei6TEg_cuxhLKcE"
 """, language="toml")
 
-if 'dev_unlocked' not in st.session_state:
-    st.session_state['dev_unlocked'] = False
-
-if not st.session_state['dev_unlocked']:
-    st.markdown("""
-    <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    div[data-testid="stToolbar"] {visibility: hidden;}
-    </style>
-    """, unsafe_allow_html=True)
-
-with st.sidebar.expander("🔐 فك قفل أدوات التعديل والرمز"):
-    pwd_dev = st.text_input("أدخل كلمة المرور (adam0000):", type="password", key="pwd_dev_input")
-    if st.button("فتح التعديل"):
-        if pwd_dev == "adam0000":
-            st.session_state['dev_unlocked'] = True
-            st.success("تم فك القفل بنجاح!")
-            st.rerun()
-        else:
-            st.error("كلمة المرور غير صحيحة!")
+# تم إلغاء كلمة المرور (adam0000): أدوات التعديل والرمز مفتوحة دائمًا بلا كلمة مرور
+st.session_state['dev_unlocked'] = True
 
 def gregorian_to_hijri_approx(g_date):
     try:
