@@ -362,6 +362,53 @@ def add_teacher_db(teacher_name, password):
         st.error(f"خطأ أثناء إضافة المعلم: {ex}")
         return False
 
+# --- حذف معلم (يُخفيه من القوائم مع إمكانية إعادته) — إضافي صرف ---
+@st.cache_data(ttl=5, show_spinner=False)
+def _fetch_removed_teachers_rows():
+    sb = get_supabase()
+    if sb is None:
+        return []
+    try:
+        res = sb.table("thaghr_removed_teachers").select("teacher_name").limit(50000).execute()
+        return res.data or []
+    except Exception:
+        return []
+
+def _fetch_removed_teachers_set():
+    return {str(r.get("teacher_name", "")).strip() for r in _fetch_removed_teachers_rows() if str(r.get("teacher_name", "")).strip()}
+
+def remove_teacher_db(teacher_name):
+    """تسجّل حذف معلم (يختفي من القوائم) دون المساس بسجلات الحضور السابقة."""
+    sb = get_supabase()
+    if sb is None:
+        st.error("❌ لم يتم الاتصال بقاعدة البيانات.")
+        return False
+    nm = str(teacher_name).strip()
+    try:
+        sb.table("thaghr_removed_teachers").upsert({"teacher_name": nm}).execute()
+        # إزالة أي وجود للمعلم في جدول المعلمين المخصص حتى لا يعود
+        try:
+            sb.table("thaghr_custom_teachers").delete().eq("teacher_name", nm).execute()
+        except Exception:
+            pass
+        st.cache_data.clear()
+        return True
+    except Exception as ex:
+        st.error(f"خطأ أثناء حذف المعلم: {ex}")
+        return False
+
+def clear_removed_teacher_db(teacher_name):
+    """تلغي حذف معلم سابق عند إعادة إضافته."""
+    sb = get_supabase()
+    if sb is None:
+        return
+    try:
+        sb.table("thaghr_removed_teachers").delete().eq("teacher_name", str(teacher_name).strip()).execute()
+    except Exception:
+        pass
+    finally:
+        st.cache_data.clear()
+
 def get_active_teachers():
     """تدمج المعلمين الأساسيين مع المضافين حديثاً."""
     names = list(TEACHERS_LIST)
@@ -373,6 +420,11 @@ def get_active_teachers():
         if nm not in names:
             names.append(nm)
         pw[nm] = str(row.get("password", "")).strip() or pw.get(nm, "101")
+    # استبعاد المعلمين المحذوفين (إضافي صرف)
+    removed = _fetch_removed_teachers_set()
+    if removed:
+        names = [n for n in names if n not in removed]
+        pw = {k: v for k, v in pw.items() if k not in removed}
     return names, pw
 # =========================================================
 # قوائم الطلاب المحفورة
@@ -1330,6 +1382,230 @@ def _esc(t):
     return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
              .replace('"', "&quot;").replace("'", "&#39;"))
 # =========================================================
+# دليل أرقام جوالات أولياء الأمور (مرفوع من ملف المدرسة) + مطابقة الأسماء
+# =========================================================
+STUDENT_PHONES_RAW = [
+    ("ابراهيم محمد علي الوهيبي", "966504158122"),
+    ("الوليد خالد فهد العتيبي", "966558522229"),
+    ("باسل محمد فرج ناصر الدوسري", "966537589781"),
+    ("بسام عبدالكريم عبدالله الدوسري", "966534467820"),
+    ("بلال عبدالرزاق العيسى", "966507448712"),
+    ("تركي عبدالله مسفر الدوسري", "966505258369"),
+    ("تميم فهد عبدالعزيز العزاز", "966554435692"),
+    ("جاسر عبدالله منصور جرمان الحارثي", "966559455545"),
+    ("حسام محمد علي عبدالله البارقي", "966504445699"),
+    ("راكان عبدالله يحيى حسين كريري", "966581727444"),
+    ("ريان عبدالله جابر علي الاسمري", "966554260960"),
+    ("ريان عبدالله منصور السبر", "966566959670"),
+    ("ريان وليد حسن حلاق", "966530527662"),
+    ("زيد زياد عبداللطيف أو قبع", "966590123455"),
+    ("سامي سعد عباس سعد حمد", "966591781701"),
+    ("سعد ناصر سعد عبدالله السبف", "966503219351"),
+    ("سيف عبدالكريم بريك العصيمي", "966504277904"),
+    ("صالح حسن فتحي سندي", "966557553922"),
+    ("عبدالرحمن ابراهيم عبدالله الحضيف", "966558822674"),
+    ("عبدالعزيز عبدالله عبدالعزيز ناصر العمار", "966555838394"),
+    ("عبدالله سعد محمد العيشان", "966504217660"),
+    ("عبدالله سليمان عبدالله الراجحي", "0551418881"),
+    ("عبدالله صالح حمد عبدالله الصفيان", "966558889978"),
+    ("علي أحمد علي اسماعيل كريري", "966558885481"),
+    ("علي سعد علي القحطاني", "966505466546"),
+    ("عمر عبدالله سعد الجبرين", "966555249420"),
+    ("فهد احمد فهد عثمان العثمان", "966504484898"),
+    ("فهد عويض ثقل المطيري", "966508271056"),
+    ("فهد 2 نايف فهد عبدالرحمن الحسينان", "966504140616"),
+    ("فيصل موينع عبدالله الموينع", "966541600918"),
+    ("فيصل ناصر سيف العريفي", "966505474606"),
+    ("مازن اسلام احمد موسى", "966550490495"),
+    ("محمد أشرف مسعود أبو خاطر", "966501276888"),
+    ("محمد اسلام محمد دراز", "966556124553"),
+    ("محمد فيصل مصلح الشمراني", "966555832145"),
+    ("محمد نايف فراج محماس الدعجاني", "966554444782"),
+    ("محمد 2 احمد علي عقيل", "966546000184"),
+    ("مشاري عثمان سعد السعد", "966500330693"),
+    ("وائل رشيد بولعيش", "966591534495"),
+    ("يزن محمد علي سعد اليحيا", "966557072133"),
+    ("يوسف محمد عبدالله ملفي ال دخنان الدوسري", "966556666176"),
+    ("اصيل ناصر محمد مذكور", "966552149044"),
+    ("تركي عبدالعزيز عبدالله مليفي المرزوق", "966501100076"),
+    ("تركي عثمان عبدالعزيز العثمان", "966505226153"),
+    ("ثامر وليد عبدالعزيز الطليحي", "966504437710"),
+    ("خالد عبدالرؤف عبدالرحمن الشنيبر", "966504173163"),
+    ("خالد عبدالله خالد الخالدي", "966558890881"),
+    ("خالد محمد عبدالله حنيف آل درعان", "966505556029"),
+    ("خالد محمد مسدف معافا", "966552680201"),
+    ("راشد احمد فهد سعيد ال سعيد", "966555992829"),
+    ("راشد سعيد راشد آلعبدالسلام", "966533177877"),
+    ("راشد صالح عبدالعزيز احمد الحلوان", "966551112126"),
+    ("راكان ابراهيم محمد عبده", "966500030732"),
+    ("راكان عبدالله سالم اليافعي", "966504234219"),
+    ("رواد محمد إبراهيم الخليل", "966502555411"),
+    ("ريان ناصر عبدالرحمن المرشود", "966550666662"),
+    ("زياد أحمد علي اللحيد", "966504432362"),
+    ("سطام محمد سعود عمر ال سعيد الدوسري", "966555260669"),
+    ("سلطان احمد صالح الفنتوخ", "966555242266"),
+    ("صالح محمد صالح الميمون المطيري", "966555097811"),
+    ("صالح ممدوح صالح خالد الجويعي", "966549887719"),
+    ("ضاري صالح مهنا الدريويش العازمي", "966531111140"),
+    ("عبدالرحمن محمد صلاح السيد بدر الدين", "966507652707"),
+    ("عبدالرحمن بدر عبدالرحمن الطريقي", "966507004114"),
+    ("عبدالرحمن تركي صالح جمعة", "966552909009"),
+    ("عبدالرحمن خالد محمد سعيد", "966504411393"),
+    ("عبدالعزيز تركي عبدالعزيز اللهيم", "966505256806"),
+    ("عبدالعزيز عبدالله شراز المالكي", "966556999627"),
+    ("عبدالعزيز عبدالله عايض علي الاسمري", "966555992269"),
+    ("عبدالعزيز عبدالمحسن فهد البديع", "966554457163"),
+    ("عبدالله تركي عبدالله الاحمد", "966542800700"),
+    ("عبدالله عبدالرحمن عبدالله النجراني", "966546416395"),
+    ("عبدالله عبيد عبدالله عبيد العتيبي", "966597882020"),
+    ("عبدالله فهد جلوي الشرمي", "966555457732"),
+    ("عبدالله متعب عبدالرحمن الجبرين", "966559898559"),
+    ("عبدالمحسن طارق بن عبدالرحمن العروان", "966506291294"),
+    ("علي خالد علي العجيري", "966505199500"),
+    ("علي عبدالله علي سعود ال حمود", "966545555161"),
+    ("عماد اسلام محمد دراز", "966556124553"),
+    ("عمر فهد محمد سعد السقامي", "966564234552"),
+    ("فارس وليد عبدالله إبراهيم الحوطي", "966552805550"),
+    ("فهد خالد فهد عبدالعزيز الزيد", "966555198633"),
+    ("فهد عبدالرحمن فهد سعد العتيبي", "966552270402"),
+    ("فيصل عبدالرحمن عزيز فالح القحطاني", "966556444082"),
+    ("فيصل عبدالمحسن عائض العتيبي", "966505552320"),
+    ("فيصل محمد صالح الفنتوخ", "966556488802"),
+    ("ماجد فهد عبدالعزيز الكثيري", "966557609015"),
+    ("مازن خالد عبدربه حسن الزهراني", "966540707365"),
+    ("متعب مطر جمعان الدوسري", "966530545913"),
+    ("محمد خالد محمد المشرف", "966551777559"),
+    ("محمد سعد محمد العيشان", "966504217660"),
+    ("محمد سلطان عبدالعزيز عبدالرحمن العيد", "966503167770"),
+    ("محمد عبدالعزيز محمد الخالدي", "966500091387"),
+    ("محمد مقعد ساير العصيمي العتيبي", "966536655992"),
+    ("مشاري إبراهيم عبداللطيف المغربي", "966542744245"),
+    ("مشاري علي موسى احمد عقيلي", "966502259722"),
+    ("مهند عبدالله فهد الزكري", "966558794720"),
+    ("مهند ماجد علي حسين كعبي", "966533313738"),
+    ("ناصر محمد عبدالله الزريعي", "966505231121"),
+    ("نواف سعد علي القاسم", "966504200199"),
+    ("نواف وليد حمد الشعلان", "966555798074"),
+    ("نواف 2 فهد ناصر القحطاني", "966556557210"),
+    ("ياسر تركي بن اسماعيل محمد مسملي", "966504261855"),
+    ("يوسف عبدالله عوض العتيبي", "966506371377"),
+    ("يوسف نايف مقعد علوش النفيعي العتيبي", "966505290037"),
+    ("ابراهيم مبارك راشد أل موينع", "966555212896"),
+    ("ابراهيم ياسر ابراهيم ياسين الحلوي", "966502220990"),
+    ("احمد سامي احمد ابراهيم العمران", "966551501503"),
+    ("الوليد عبدالله إبراهيم المبدل", "966505241627"),
+    ("ثامر عمر ابراهيم عثمان", "966538384444"),
+    ("جهاد فارس عبدالقادر حناوي", "966562674178"),
+    ("حامد محمد حامد محمد شباط", "966595001616"),
+    ("حسام حسن محمد عامر الشهري", "966557775278"),
+    ("خالد تركي عايض القحطاني", "966536201378"),
+    ("خالد داود عابد الحارثي", "966501076244"),
+    ("خالد محمد عبدالكريم الخفاجي", "966533074601"),
+    ("ذياب محمد ذياب محمد القحطاني", "966561169999"),
+    ("راكان سالم محمد مسفر القحطاني", "966556609291"),
+    ("سطام عبدالعزيز عبدالله العريفي", "966599791658"),
+    ("سعد مسفر سعد سفران القحطاني", "966508057005"),
+    ("سعود خالد عبدالله عبدالرحمن الحمد", "966555242944"),
+    ("سعود سلطان هليل العتيبي", "966554820082"),
+    ("سعود عبدالله سعود الساحامي", "966500650867"),
+    ("سعود مشعل ابراهيم الشثري", "966598887996"),
+    ("سعود ناصر سيف العريفي", "966505474606"),
+    ("سعيد محمد سعيد عباد باوزير", "966553435135"),
+    ("سلطان عبدالله حسن محمد القحطاني", "966563484825"),
+    ("طلال فهد عطيه الزهراني", "966567837159"),
+    ("طلال محمد منير سالم المهدرس", "966531167666"),
+    ("عبد الرحمن ربيع جابر محمد خبراني", "966535924655"),
+    ("عبدالرحمن احمد جاسم الحمدي", "966503432054"),
+    ("عبدالرحمن حمد محمد سعد عصمان العريفي", "966555556856"),
+    ("عبدالعزيز سعود فهد العتيبي", "966544155592"),
+    ("عبدالعزيز ماجد عبدالعزيز الزير", "966500933390"),
+    ("عبدالعزيز وليد ناصر عبدالعزيز بن سعران", "966556660555"),
+    ("عبدالكريم مساعد عبدالعزيز الهزاع", "966503210252"),
+    ("عبداللطيف ابراهيم محمد فهد الطمرة", "966505404365"),
+    ("عبدالله بندر فهد المسيحل", "966500155334"),
+    ("عبدالله 2 سامي سعد الحوشاني", "966555219086"),
+    ("عبدالمجيد محمد مسعود سفر القحطاني", "966555275591"),
+    ("عزالدين احمد محمد سعد", "966561317507"),
+    ("عزام خالد شلهوب بن شلهوب", "966506404016"),
+    ("عزام 2 فهد احمد صلوي", "966555796951"),
+    ("علي 2 احمد علي عقيل", "966546000184"),
+    ("عمر سعد هلال الشبانات", "966505213725"),
+    ("عمر وليد درويش علي", "966557790508"),
+    ("فارس محمد سالم نويشي الحربي", "966583228278"),
+    ("فارس مشعل عبدالله الموينع", "966555200719"),
+    ("فهد عيسى محمد عبدالله العيسى", "966554499908"),
+    ("فيصل عبدالله سعود الجميعه", "966554949948"),
+    ("مازن خالد دخيل داخل المطيري", "966501110052"),
+    ("مازن رفعت محمد حاج النيل", "966501331089"),
+    ("مبارك صالح مبارك محمد هليل", "966553663819"),
+    ("محمد عبدالله حمد ناصربن عمران", "966544779170"),
+    ("محمد عبدالمحسن ناصر الحزام", "966505264075"),
+    ("محمد علي محسن العثيميني", "966506256254"),
+    ("محمد فايز عبدالرحمن بن يوسف", "966505482728"),
+    ("مشاري 2 سلطان سالم عبدالله الشمراني", "966553908888"),
+    ("معاذ عبدالله سعود العريفي", "966505473192"),
+    ("ناصر حسين محمد علي ال جبران", "966550004952"),
+    ("نايف بندر خلفان سرور العلوي", "966532225560"),
+    ("نواف عبدالعزيز عبدالله مليفي المرزوق", "966501100076"),
+    ("هادي سلطان هادي القحطاني", "966505936192"),
+    ("وائل عبدالله عامر علي الغامدي", "966548888663"),
+    ("يزبد طارق علي الحديثي", "966554084040"),
+    ("يزيد حسين متعب محمد كعكم", "966550117805"),
+    ("يزيد حمد مترك محمد القحطاني", "966505203795"),
+    ("يوسف عايد عواد حمد البلوي", "966531066289"),
+]
+
+import re as _re_name
+
+def _norm_name(name):
+    s = str(name or "").replace("\xa0", " ")
+    s = _re_name.sub(r"[\u064B-\u0652\u0640]", "", s)
+    s = s.replace("\u0623", "\u0627").replace("\u0625", "\u0627").replace("\u0622", "\u0627").replace("\u0671", "\u0627")
+    s = s.replace("\u0649", "\u064a").replace("\u0629", "\u0647")
+    s = _re_name.sub(r"\s+", " ", s).strip()
+    return s
+
+_NAME_STOP = {"\u0628\u0646", "\u0627\u0628\u0646", "\u0628\u0646\u062a", "\u0627\u0644", "\u0639\u0628\u062f"}
+
+def _name_tokens(name):
+    n = _norm_name(name)
+    return frozenset(t for t in n.split() if t not in _NAME_STOP and len(t) > 1)
+
+@st.cache_data(show_spinner=False)
+def _phone_index():
+    idx = []
+    for nm, ph in STUDENT_PHONES_RAW:
+        idx.append((_name_tokens(nm), ph, nm))
+    return idx
+
+def _resolve_phone(name, sid="", contacts=None):
+    if contacts:
+        c = contacts.get(str(sid).strip(), {})
+        if c.get("phone"):
+            return c["phone"]
+    dt = _name_tokens(name)
+    if not dt:
+        return ""
+    best = ""
+    best_key = (0, 0.0)
+    for xt, ph, xn in _phone_index():
+        inter = len(dt.intersection(xt))
+        if inter < 2:
+            continue
+        full = inter >= min(len(dt), len(xt))
+        score = inter / max(1, len(dt.union(xt)))
+        if full or score > 0.5:
+            key = (inter, score)
+            if key > best_key:
+                best_key = key
+                best = ph
+    return best
+
+MORA_LOGIN_URL = "https://mora-sa.com/login"
+MORA_USERNAME = "966508634881"
+MORA_PASSWORD = "THA@0508634881"
+
+# =========================================================
 # دالة عرض أدوات الإدارة المتقدمة (تُستدعى داخل صفحة الإدارة)
 # =========================================================
 def render_super_admin_tools(df):
@@ -1343,7 +1619,7 @@ def render_super_admin_tools(df):
         "📤 رفع طلاب (إكسل)",
         "🔄 ترحيل الطلاب",
         "🗑️ حذف طلاب",
-        "👨‍🏫 إضافة معلم",
+        "👨‍🏫 إضافة / حذف معلم",
         "➕ إضافة صف / فصل",
         "📱 رسائل الغياب",
     ])
@@ -1455,25 +1731,43 @@ def render_super_admin_tools(df):
         else:
             st.info("لا يوجد طلاب في هذا الفصل.")
 
-    # ---------- (4) إضافة معلم ----------
+    # ---------- (4) إضافة / حذف معلم ----------
     with t_teacher:
-        st.markdown("#### 👨‍🏫 إضافة معلم جديد ورقمه السري")
         _names_now, _ = get_active_teachers()
-        tn = st.text_input("اسم المعلم:", key="adm_tn")
-        tp = st.text_input("🔑 الرقم السري (3 أرقام):", key="adm_tp", max_chars=3)
-        if st.button("➕ إضافة المعلم", type="primary", key="adm_tn_btn"):
-            nm = (tn or "").strip()
-            pw = (tp or "").strip()
-            if not nm:
-                st.warning("⚠️ أدخل اسم المعلم.")
-            elif len(pw) != 3 or not pw.isdigit():
-                st.warning("⚠️ الرقم السري يجب أن يكون 3 أرقام.")
-            elif nm in _names_now:
-                st.warning(f"⚠️ المعلم ({nm}) موجود مسبقاً.")
+        cT1, cT2 = st.columns(2)
+        with cT1:
+            st.markdown("#### 👨‍🏫 إضافة معلم جديد ورقمه السري")
+            tn = st.text_input("اسم المعلم:", key="adm_tn")
+            tp = st.text_input("🔑 الرقم السري (3 أرقام):", key="adm_tp", max_chars=3)
+            if st.button("➕ إضافة المعلم", type="primary", key="adm_tn_btn"):
+                nm = (tn or "").strip()
+                pw = (tp or "").strip()
+                if not nm:
+                    st.warning("⚠️ أدخل اسم المعلم.")
+                elif len(pw) != 3 or not pw.isdigit():
+                    st.warning("⚠️ الرقم السري يجب أن يكون 3 أرقام.")
+                elif nm in _names_now:
+                    st.warning(f"⚠️ المعلم ({nm}) موجود مسبقاً.")
+                else:
+                    clear_removed_teacher_db(nm)
+                    if add_teacher_db(nm, pw):
+                        st.success(f"✅ تمت إضافة المعلم ({nm}) بنجاح!")
+                        st.rerun()
+        with cT2:
+            st.markdown("#### 🗑️ حذف معلم من القائمة")
+            st.warning("⚠️ الحذف يُخفي المعلم من القوائم فقط ولا يمس سجلات الحضور السابقة (يمكن إعادته بإضافته مجدداً).")
+            if _names_now:
+                del_tn = st.selectbox("اختر المعلم المراد حذفه:", _names_now, key="del_tn_sel")
+                del_tn_conf = st.checkbox("أؤكد حذف المعلم المحدد", key="del_tn_conf")
+                if st.button("🗑️ حذف المعلم", type="primary", key="del_tn_btn"):
+                    if not del_tn_conf:
+                        st.error("يرجى التأشير على التأكيد أولاً.")
+                    else:
+                        if remove_teacher_db(del_tn):
+                            st.success(f"🗑️ تم حذف المعلم ({del_tn}) بنجاح.")
+                            st.rerun()
             else:
-                if add_teacher_db(nm, pw):
-                    st.success(f"✅ تمت إضافة المعلم ({nm}) بنجاح!")
-                    st.rerun()
+                st.info("لا يوجد معلمون في القائمة حالياً.")
 
     # ---------- (5) إضافة صف / فصل ----------
     with t_struct:
@@ -1504,6 +1798,113 @@ def render_super_admin_tools(df):
     with t_msg:
         render_absence_messaging(df, contacts)
 # =========================================================
+# تقرير الطلاب المتكرر غيابهم (HTML قابل للطباعة / حفظ PDF)
+# =========================================================
+def generate_repeated_absence_html(multi_list, sel_date):
+    rows_html = ""
+    for idx, s in enumerate(multi_list, 1):
+        periods_txt = _esc("، ".join(s["periods"]))
+        phone_txt = _esc(s["phone"]) if s.get("phone") else "<span style='color:#DC2626;'>غير مسجل</span>"
+        rows_html += (f'<tr><td>{idx}</td>'
+                      f'<td style="text-align:right;"><b>{_esc(s["name"])}</b><br><small style="color:#64748B;">الهوية: {_esc(s["id"])}</small></td>'
+                      f'<td>{_esc(s["grade"])}</td><td>{_esc(s["section"])}</td>'
+                      f'<td style="color:#DC2626;font-weight:800;font-size:16px;">{s["count"]}</td>'
+                      f'<td style="color:#334155;">{periods_txt}</td>'
+                      f'<td style="direction:ltr;">{phone_txt}</td></tr>')
+    html_code = f"""<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>تقرير الطلاب المتكرر غيابهم</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+body {{ font-family:'Cairo',sans-serif; text-align:right; padding:25px; background:#FFF; color:#1E293B; direction:rtl; }}
+.header {{ text-align:center; border-bottom:3px solid #0F2552; padding-bottom:12px; margin-bottom:18px; }}
+h2 {{ color:#0F2552; margin:5px; font-weight:800; font-size:22px; }}
+h4 {{ color:#4B5563; margin:5px; font-weight:700; font-size:16px; }}
+.meta {{ text-align:center; color:#64748B; font-size:13px; margin-bottom:16px; font-weight:700; }}
+.badge {{ display:inline-block; background:#FEE2E2; color:#B91C1C; border-radius:20px; padding:5px 16px; font-weight:800; }}
+table {{ width:100%; border-collapse:collapse; margin-top:10px; }}
+th, td {{ border:1px solid #CBD5E1; padding:10px; text-align:center; font-size:13px; }}
+th {{ background:#0F2552; color:white; font-weight:700; }}
+tr:nth-child(even) {{ background:#FEF2F2; }}
+@media print {{ body {{ padding:10px; }} }}
+</style>
+</head>
+<body>
+<div class="header">
+    {_logo_img_html()}<br>
+    <h2>🏫 مدرسة متوسطة الثغر النموذجية</h2>
+    <h4>🔴 تقرير الطلاب المتكرر غيابهم (الغائبون في أكثر من حصة)</h4>
+</div>
+<div class="meta">📅 تاريخ الغياب: {_esc(str(sel_date))} &nbsp;|&nbsp; <span class="badge">إجمالي الطلاب: {len(multi_list)}</span></div>
+<table>
+<thead>
+<tr><th>#</th><th>اسم الطالب</th><th>الصف</th><th>الفصل</th><th>عدد حصص الغياب</th><th>الحصص الغائب عنها</th><th>جوال ولي الأمر</th></tr>
+</thead>
+<tbody>
+{rows_html}
+</tbody>
+</table>
+{_signatures_html()}
+</body>
+</html>"""
+    return html_code
+
+# =========================================================
+# صفحة الإرسال الجماعي عبر الواتس آب (ملف مستقل بأيقونات)
+# =========================================================
+def generate_whatsapp_sender_html(sel_students, compose_fn, sel_date):
+    cards = ""
+    for i, s in enumerate(sel_students, 1):
+        link = _wa_link(s["phone"], compose_fn(s))
+        has = bool(s["phone"])
+        phone_disp = _esc(s["phone"]) if has else "بلا جوال مسجل"
+        warn = "" if has else "<div style='color:#B91C1C;font-size:12px;font-weight:700;'>⚠️ اختر الرقم يدوياً</div>"
+        cards += (f"<a class='wa-card' href='{_esc(link)}' target='_blank' rel='noopener'>"
+                  f"<div class='num'>{i}</div>"
+                  f"<div class='wa-ico'>📱</div>"
+                  f"<div class='nm'>{_esc(s['name'])}</div>"
+                  f"<div class='meta'>{_esc(s['grade'])} — {_esc(s['section'])}</div>"
+                  f"<div class='ph' style='direction:ltr;'>{phone_disp}</div>{warn}"
+                  f"<div class='send'>اضغط للإرسال ✉️</div></a>")
+    html_code = f"""<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>إرسال رسائل الغياب عبر الواتس آب</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+* {{ box-sizing:border-box; }}
+body {{ font-family:'Cairo',sans-serif; direction:rtl; background:#F1F5F9; color:#0F2552; margin:0; padding:18px; }}
+.hd {{ background:linear-gradient(135deg,#0F2552,#1E3A8A); color:#fff; border-radius:16px; padding:18px; text-align:center; margin-bottom:14px; }}
+.hd h2 {{ margin:6px 0; font-size:20px; }}
+.hd .ksa {{ background:#166534; display:inline-block; padding:3px 14px; border-radius:20px; font-weight:800; font-size:13px; }}
+.tip {{ background:#ECFDF5; border:1px solid #A7F3D0; color:#065F46; border-radius:12px; padding:12px; font-weight:700; font-size:14px; margin-bottom:14px; }}
+.grid {{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }}
+.wa-card {{ background:#fff; border:2px solid #25D366; border-radius:16px; padding:14px 10px; text-align:center; text-decoration:none; color:#0F2552; box-shadow:0 2px 8px rgba(0,0,0,.06); position:relative; }}
+.wa-card:hover {{ box-shadow:0 6px 16px rgba(37,211,102,.3); }}
+.wa-card .num {{ position:absolute; top:6px; right:10px; background:#0F2552; color:#fff; width:24px; height:24px; line-height:24px; border-radius:50%; font-size:12px; font-weight:800; }}
+.wa-ico {{ font-size:30px; }}
+.wa-card .nm {{ font-weight:800; font-size:14px; margin-top:4px; }}
+.wa-card .meta {{ color:#64748B; font-size:11px; margin:2px 0; }}
+.wa-card .ph {{ color:#16A34A; font-weight:700; font-size:12px; }}
+.wa-card .send {{ margin-top:8px; background:#25D366; color:#fff; border-radius:20px; padding:6px; font-weight:800; font-size:12px; }}
+@media print {{ .wa-card {{ border-color:#94A3B8; }} .tip {{ display:none; }} }}
+</style>
+</head>
+<body>
+<div class="hd"><div class="ksa">🇸🇦 المملكة العربية السعودية</div><h2>📱 إرسال رسائل الغياب — مدرسة متوسطة الثغر النموذجية</h2><div>تاريخ الغياب: {_esc(str(sel_date))} &nbsp;|&nbsp; عدد الطلاب: {len(sel_students)}</div></div>
+<div class="tip">✅ اضغط على أيقونة كل طالب لفتح محادثة الواتس آب والرسالة جاهزة — ثم اضغط زر الإرسال 📲. (الواتس آب لا يسمح بالإرسال التلقائي دون اشتراك API رسمي).</div>
+<div class="grid">
+{cards}
+</div>
+</body>
+</html>"""
+    return html_code
+
+# =========================================================
 # دالة رسائل الغياب (واتس آب + منصة مورا)
 # =========================================================
 def render_absence_messaging(df, contacts):
@@ -1532,63 +1933,104 @@ def render_absence_messaging(df, contacts):
         periods = sorted({str(p) for p in g['الحصة'].tolist()})
         grade = str(g['الصف'].iloc[0])
         section = str(g['الفصل'].iloc[0])
-        ph = contacts.get(str(sid).strip(), {}).get('phone', '')
+        ph = _resolve_phone(name, sid, contacts)
         students.append({"id": str(sid), "name": name, "periods": periods, "count": len(periods),
                          "grade": grade, "section": section, "phone": ph})
     students.sort(key=lambda x: (-x['count'], x['name']))
 
-    multi = [s for s in students if s['count'] > 1]
-    st.markdown(f"<div style='color:#0F2552;font-weight:800;margin:8px 0;'>📌 إجمالي الغائبين: {len(students)} طالب &nbsp;|&nbsp; غائبون في أكثر من حصة: {len(multi)}</div>", unsafe_allow_html=True)
+    multi = [s for s in students if s["count"] > 1]
+    with_phone = sum(1 for s in students if s["phone"])
 
-    if multi:
-        chips = "".join(f"<span class='absent-chip'>🔴 {_esc(s['name'])} — {s['count']} حصص ({_esc('، '.join(s['periods']))})</span>" for s in multi)
-        st.markdown("<div style='margin-bottom:10px;'><b>الطلاب المتكرر غيابهم (أكثر من حصة):</b></div>" + chips, unsafe_allow_html=True)
+    # شريط إحصائي أنيق
+    st.markdown(
+        "<div style='display:flex;gap:10px;flex-wrap:wrap;margin:12px 0;'>"
+        f"<div style='flex:1;min-width:150px;background:linear-gradient(135deg,#0F2552,#1E3A8A);color:#fff;border-radius:14px;padding:14px;text-align:center;'><div style='font-size:28px;font-weight:900;'>{len(students)}</div><div>إجمالي الغائبين</div></div>"
+        f"<div style='flex:1;min-width:150px;background:linear-gradient(135deg,#B91C1C,#DC2626);color:#fff;border-radius:14px;padding:14px;text-align:center;'><div style='font-size:28px;font-weight:900;'>{len(multi)}</div><div>متكرر غيابهم (أكثر من حصة)</div></div>"
+        f"<div style='flex:1;min-width:150px;background:linear-gradient(135deg,#166534,#16A34A);color:#fff;border-radius:14px;padding:14px;text-align:center;'><div style='font-size:28px;font-weight:900;'>{with_phone}</div><div>لديهم جوال مسجّل</div></div>"
+        "</div>", unsafe_allow_html=True)
 
     # جدول عرض الغائبين
     df_show = pd.DataFrame([{
-        "اسم الطالب": s['name'], "رقم الطالب": s['id'], "الصف": s['grade'], "الفصل": s['section'],
-        "عدد حصص الغياب": s['count'], "الجوال": s['phone'] or "—"
+        "اسم الطالب": s["name"], "رقم الطالب": s["id"], "الصف": s["grade"], "الفصل": s["section"],
+        "عدد حصص الغياب": s["count"], "الحصص": "، ".join(s["periods"]), "جوال ولي الأمر": s["phone"] or "—"
     } for s in students])
     st.dataframe(df_show, use_container_width=True)
 
     # اختيار الطلاب المراد مراسلتهم
-    opt_map = {f"{s['name']} ({s['id']})" + ("" if s['phone'] else " — بلا جوال"): s for s in students}
-    picked = st.multiselect("✉️ حدد الطلاب المراد إرسال رسالة الغياب لهم:", list(opt_map.keys()), default=list(opt_map.keys()), key="abs_pick")
+    opt_map = {f"{s['name']} ({s['id']})" + ("" if s["phone"] else " — بلا جوال"): s for s in students}
+    picked = st.multiselect("✉️ حدّد الطلاب المراد إرسال رسالة الغياب لهم:", list(opt_map.keys()), default=list(opt_map.keys()), key="abs_pick")
     sel_students = [opt_map[k] for k in picked]
 
     default_msg = ("السلام عليكم ورحمة الله، نحيطكم علماً بأن ابنكم الطالب {name} "
                    "قد تغيّب عن المدرسة بتاريخ {date}. نأمل متابعته وإفادتنا بالسبب. "
                    "مع الشكر — مدرسة متوسطة الثغر النموذجية.")
-    msg_tmpl = st.text_area("📝 نص رسالة الغياب (يمكنك استخدام {name} لاسم الطالب و {date} للتاريخ):", value=default_msg, height=130, key="abs_msg_tmpl")
+    msg_tmpl = st.text_area("📝 نص رسالة الغياب (يمكنك استخدام {name} لاسم الطالب و {date} للتاريخ):", value=default_msg, height=120, key="abs_msg_tmpl")
 
     def _compose(s):
-        return (msg_tmpl or "").replace("{name}", s['name']).replace("{date}", str(sel_date))
+        return (msg_tmpl or "").replace("{name}", s["name"]).replace("{date}", str(sel_date))
 
-    st.markdown("<div class='admin-section-title' style='font-size:15px;'>🟢 الإرسال عبر الواتس آب</div>", unsafe_allow_html=True)
-    st.caption("اضغط زر الطالب لفتح محادثة واتس آب بالرسالة جاهزة (للطلاب الذين لديهم جوال مسجّل).")
-    if sel_students:
-        links_html = "<div style='display:flex;flex-wrap:wrap;gap:8px;margin:6px 0;'>"
-        for s in sel_students:
-            link = _wa_link(s['phone'], _compose(s))
-            tag = "" if s['phone'] else " ⚠️"
-            links_html += f"<a class='ksa-btn wa-btn' href='{_esc(link)}' target='_blank' rel='noopener'>📱 {_esc(s['name'])}{tag}</a>"
-        links_html += "</div>"
-        st.markdown(links_html, unsafe_allow_html=True)
-        st.caption("⚠️ = لا يوجد جوال مسجّل لهذا الطالب؛ سيفتح واتس آب بالرسالة لتختار الرقم يدوياً.")
-    else:
-        st.info("اختر طالبًا واحدًا على الأقل لإظهار أزرار الإرسال.")
+    st.markdown("<div class='admin-section-title' style='font-size:15px;'>📨 إجراءات الإرسال والتقارير — اضغط الأيقونة لفتحها</div>", unsafe_allow_html=True)
 
-    st.markdown("<div class='admin-section-title' style='font-size:15px;'>🏛️ الإرسال عبر منصة مورا</div>", unsafe_allow_html=True)
-    st.markdown("<a class='ksa-btn mora-btn' href='https://mora-sa.com/login' target='_blank' rel='noopener'>🏛️ فتح منصة مورا لإرسال الغياب</a>", unsafe_allow_html=True)
-    st.caption("يتم تسجيل الغياب داخل منصة مورا مباشرة؛ انسخ النص وقائمة الطلاب التالية والصقها في المنصة.")
-    if sel_students:
-        mora_text = f"رسالة غياب بتاريخ {sel_date}:\n\n"
-        for s in sel_students:
-            mora_text += f"- {s['name']} (الهوية: {s['id']} | {s['grade']} - {s['section']}) | الجوال: {s['phone'] or 'غير مسجل'}\n"
-        mora_text += "\n" + (msg_tmpl or "").replace("{name}", "الطالب").replace("{date}", str(sel_date))
-        st.code(mora_text)
-        st.download_button("⬇️ تحميل قائمة الغائبين (CSV)", data=df_show.to_csv(index=False).encode('utf-8-sig'),
-                           file_name=f"الغائبون_{sel_date}.csv", mime="text/csv", key="abs_csv_dl", use_container_width=True)
+    # ===== أيقونة (1): واتس آب جماعي =====
+    with st.expander("🟢  إرسال رسائل الغياب عبر الواتس آب (جماعي)", expanded=False):
+        if not sel_students:
+            st.info("اختر طالباً واحداً على الأقل من القائمة الأعلى.")
+        else:
+            wa_html = generate_whatsapp_sender_html(sel_students, _compose, sel_date)
+            st.download_button("📲 فتح صفحة الإرسال الجماعي (أيقونة لكل غائب)", data=wa_html.encode("utf-8"),
+                               file_name=f"ارسال_واتساب_الغياب_{sel_date}.html", mime="text/html", key="wa_sender_dl", type="primary", use_container_width=True)
+            st.caption("نزّل الصفحة وافتحها: ستجد أيقونة لكل طالب — اضغط الأيقونة ليفتح الواتس بالرسالة جاهزة ثم أرسل. (الواتس آب لا يتيح الإرسال الآلي الكامل دون API رسمي).")
+            links_html = "<div style='display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;'>"
+            for s in sel_students:
+                link = _wa_link(s["phone"], _compose(s))
+                tag = "" if s["phone"] else " ⚠️"
+                links_html += f"<a class='ksa-btn wa-btn' href='{_esc(link)}' target='_blank' rel='noopener'>📱 {_esc(s['name'])}{tag}</a>"
+            links_html += "</div>"
+            st.markdown(links_html, unsafe_allow_html=True)
+            no_phone = [s for s in sel_students if not s["phone"]]
+            if no_phone:
+                st.caption(f"⚠️ يوجد {len(no_phone)} طالب بلا جوال مسجّل؛ سيفتح الواتس بالرسالة لاختيار الرقم يدوياً.")
+
+    # ===== أيقونة (2): منصة مورا =====
+    with st.expander("🏛️  إرسال رسائل الغياب عبر منصة مورا", expanded=False):
+        st.markdown(f"<a class='ksa-btn mora-btn' href='{_esc(MORA_LOGIN_URL)}' target='_blank' rel='noopener'>🏛️ فتح منصة مورا وتسجيل الدخول</a>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top:8px;font-weight:800;color:#0F2552;'>🔑 بيانات الدخول لمنصة مورا:</div>", unsafe_allow_html=True)
+        st.code(f"اسم المستخدم: {MORA_USERNAME}\nكلمة المرور: {MORA_PASSWORD}")
+        st.caption("انسخ بيانات الدخول وسجّل الدخول في منصة مورا، ثم الصق قائمة الغائبين والنص التالي. (منصة مورا لا توفّر API للإرسال الآلي من خارجها).")
+        if sel_students:
+            mora_text = f"رسالة غياب بتاريخ {sel_date}:\n\n"
+            for s in sel_students:
+                mora_text += f"- {s['name']} (الهوية: {s['id']} | {s['grade']} - {s['section']}) | الجوال: {s['phone'] or 'غير مسجل'}\n"
+            mora_text += "\n" + (msg_tmpl or "").replace("{name}", "الطالب").replace("{date}", str(sel_date))
+            st.markdown("<div style='margin-top:8px;font-weight:800;color:#0F2552;'>📋 انسخ النص وقائمة الغائبين للصقها في مورا:</div>", unsafe_allow_html=True)
+            st.code(mora_text)
+            st.download_button("⬇️ تحميل قائمة الغائبين (CSV)", data=df_show.to_csv(index=False).encode("utf-8-sig"),
+                               file_name=f"الغائبون_{sel_date}.csv", mime="text/csv", key="abs_csv_dl", use_container_width=True)
+        else:
+            st.info("اختر طالباً واحداً على الأقل لإظهار نص مورا.")
+
+    # ===== أيقونة (3): تقرير المتكرر غيابهم =====
+    with st.expander(f"🔴  تقرير الطلاب المتكرر غيابهم ({len(multi)}) — تصدير HTML / PDF", expanded=False):
+        if not multi:
+            st.success("🎉 لا يوجد طلاب تكرّر غيابهم في أكثر من حصة بهذا التاريخ.")
+        else:
+            df_multi = pd.DataFrame([{
+                "اسم الطالب": s["name"], "رقم الطالب": s["id"], "الصف": s["grade"], "الفصل": s["section"],
+                "عدد حصص الغياب": s["count"], "الحصص الغائب عنها": "، ".join(s["periods"]), "جوال ولي الأمر": s["phone"] or "غير مسجل"
+            } for s in multi])
+            st.dataframe(df_multi, use_container_width=True)
+            rep_html = generate_repeated_absence_html(multi, sel_date)
+            excel_buf = io.BytesIO()
+            with pd.ExcelWriter(excel_buf, engine="openpyxl") as _w:
+                df_multi.to_excel(_w, sheet_name="المتكرر غيابهم", index=False)
+            cc1, cc2 = st.columns(2)
+            cc1.download_button("🖨️ تصدير التقرير (HTML / PDF للطباعة)", data=rep_html.encode("utf-8"),
+                                file_name=f"تقرير_المتكرر_غيابهم_{sel_date}.html", mime="text/html", key="rep_multi_html", type="primary", use_container_width=True)
+            cc2.download_button("📊 تصدير التقرير (Excel)", data=excel_buf.getvalue(),
+                                file_name=f"تقرير_المتكرر_غيابهم_{sel_date}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="rep_multi_xlsx", use_container_width=True)
+            st.caption("💡 لحفظه PDF: افتح ملف HTML ثم اطبع (Ctrl+P) واختر «حفظ كـ PDF».")
+
+
 # =========================================================
 # اختيار لوحة التحكم
 # =========================================================
@@ -1598,7 +2040,7 @@ st.sidebar.title("📌 نظام المتابعة")
 st.sidebar.markdown("<div style='background:#1E293B; border-right:4px solid #3B82F6; border-radius:8px; padding:10px; margin-bottom:12px; font-weight:700; color:#F8FAFC;'>👇 اختر لوحة التحكم:</div>", unsafe_allow_html=True)
 role = st.sidebar.radio(
     "اختر لوحة التحكم:",
-    ["👨‍🏫 حساب المعلم (رصد الحضور)", "👔 حساب الوكيل والمدير (المتابعة والتصدير)"],
+    ["👨‍🏫 حساب المعلم (رصد الحضور)", "👔 حساب الوكيل والمدير (المتابعة والتصدير)", "🛠️ أدوات الإدارة المتقدمة (محمية بكلمة مرور)"],
     label_visibility="collapsed"
 )
 st.write("")
@@ -1713,7 +2155,7 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
 # =========================================================
 # 8. حساب الوكيل والمدير
 # =========================================================
-else:
+elif role == "👔 حساب الوكيل والمدير (المتابعة والتصدير)":
     if 'admin_authenticated' not in st.session_state:
         st.session_state['admin_authenticated'] = False
 
@@ -1741,9 +2183,7 @@ else:
         df = load_student_attendance_db()
         teacher_logs_db = load_teacher_logs_from_db()
 
-        # ===== أدوات الإدارة المتقدمة (إضافي) =====
-        with st.expander("🛠️ أدوات الإدارة المتقدمة (طلاب / معلمين / صفوف / رسائل غياب واتس ومورا)", expanded=True):
-            render_super_admin_tools(df)
+        st.info("🛠️ أدوات الإدارة المتقدمة (إضافة / ترحيل / حذف طلاب ومعلمين وصفوف ورسائل الغياب) أصبحت في صفحة مستقلة محمية بكلمة مرور — اخترها من القائمة الجانبية: «🛠️ أدوات الإدارة المتقدمة».")
         st.write("---")
 
         metric_dates = ["📆 الكل (إجمالي السجل)"] + (sorted(list(df['التاريخ'].unique()), reverse=True) if not df.empty else [])
@@ -2145,3 +2585,40 @@ else:
                 st.download_button(label="🖨️ فتح صفحة طباعة السجل العام (PDF)", data=html_full.encode('utf-8'), file_name=f"التقرير_الشامل_{date.today()}.html", mime="text/html", key="btn_print_full")
             else:
                 st.info("لا توجد بيانات حضور مرصودة في السجل.")
+
+# =========================================================
+# 9. صفحة أدوات الإدارة المتقدمة (مستقلة ومحمية بكلمة مرور — نفس كلمة الوكيل)
+# =========================================================
+else:
+    if 'tools_authenticated' not in st.session_state:
+        st.session_state['tools_authenticated'] = False
+
+    if _logo_data_uri():
+        st.markdown(f"<div style='text-align:center; margin-bottom:8px;'><img src='{_logo_data_uri()}' alt='شعار مدارس الثغر النموذجية' style='height:90px; width:auto;' /></div>", unsafe_allow_html=True)
+
+    if not st.session_state['tools_authenticated']:
+        st.markdown(
+            "<div class='ksa-ribbon'><div class='tag'>🇸🇦 المملكة العربية السعودية</div>"
+            "<h3>🛠️ أدوات الإدارة المتقدمة — مدرسة متوسطة الثغر النموذجية 🌴⚔️</h3>"
+            "<div style='opacity:.95;font-weight:600;'>صفحة مستقلة محمية — إضافة / ترحيل / حذف طلاب ومعلمين وصفوف ورسائل الغياب</div></div>",
+            unsafe_allow_html=True)
+        colA, colB, colC = st.columns([1, 2, 1])
+        with colB:
+            st.markdown("<div style='background:#FFFFFF; border:1px solid #E2E8F0; border-top:5px solid #166534; border-radius:16px; padding:22px; box-shadow:0 6px 20px rgba(0,0,0,.06); text-align:center; margin-top:10px;'><div style='font-size:40px;'>🔐</div><div style='color:#0F2552; font-weight:800; font-size:18px; margin:6px 0;'>صفحة محمية — للإدارة فقط</div><div style='color:#64748B; font-size:13px;'>يرجى إدخال كلمة المرور للمتابعة (نفس كلمة صفحة الوكيل والمدير)</div></div>", unsafe_allow_html=True)
+            pwd_tools = st.text_input("🔑 كلمة المرور:", type="password", key="tools_pwd")
+            if st.button("🔓 دخول صفحة الأدوات", type="primary", use_container_width=True, key="tools_login_btn"):
+                if pwd_tools == "adam112233":
+                    st.session_state['tools_authenticated'] = True
+                    st.success("تم الدخول بنجاح!")
+                    st.rerun()
+                else:
+                    st.error("كلمة المرور غير صحيحة! يرجى التأكد وإعادة المحاولة.")
+    else:
+        col_tp1, col_tp2 = st.columns([4, 1])
+        with col_tp2:
+            if st.button("🚪 تسجيل الخروج", use_container_width=True, key="tools_logout_btn"):
+                st.session_state['tools_authenticated'] = False
+                st.rerun()
+        st.write("---")
+        df_tools = load_student_attendance_db()
+        render_super_admin_tools(df_tools)
