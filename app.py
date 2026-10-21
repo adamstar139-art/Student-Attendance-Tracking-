@@ -1979,7 +1979,31 @@ def render_absence_messaging(df, contacts):
     default_idx = 0
     if str(date.today()) in dates_av:
         default_idx = dates_av.index(str(date.today()))
-    sel_date = st.selectbox("📅 اختر تاريخ الغياب:", dates_av, index=default_idx if dates_av else 0, key="abs_msg_date")
+
+    # 🌟 إضافة خيار تصفية غياب الحصص (من حصة واحدة حتى السابعة) بجوار التاريخ بأيقونة أنيقة
+    col_date, col_p_filter = st.columns([2, 2])
+    with col_date:
+        sel_date = st.selectbox("📅 اختر تاريخ الغياب:", dates_av, index=default_idx if dates_av else 0, key="abs_msg_date")
+
+    with col_p_filter:
+        period_options = [
+            "الكل (جميع الغائبين)",
+            "غائب حصة واحدة (1)",
+            "غائب حصتين (2)",
+            "غائب (3) حصص",
+            "غائب (4) حصص",
+            "غائب (5) حصص",
+            "غائب (6) حصص",
+            "غائب (7) حصص (يوم كامل)",
+            "🎯 غائب الحصة 1",
+            "🎯 غائب الحصة 2",
+            "🎯 غائب الحصة 3",
+            "🎯 غائب الحصة 4",
+            "🎯 غائب الحصة 5",
+            "🎯 غائب الحصة 6",
+            "🎯 غائب الحصة 7",
+        ]
+        selected_p_filter = st.selectbox("🎯 تصفية حسب الحصة / عدد الحصص:", period_options, key="abs_p_filter_opt")
 
     d_day = df[(df['التاريخ'] == sel_date) & (df['الحالة'] == 'غائب')].copy()
     if d_day.empty:
@@ -1997,6 +2021,37 @@ def render_absence_messaging(df, contacts):
         students.append({"id": str(sid), "name": name, "periods": periods, "count": len(periods),
                          "grade": grade, "section": section, "phone": ph})
     students.sort(key=lambda x: (-x['count'], x['name']))
+
+    # 🎯 تصفية قائمة الطلاب بناءً على الحصة أو عدد الحصص المحددة دون المساس بباقي الكود
+    if selected_p_filter != "الكل (جميع الغائبين)":
+        if "حصة واحدة" in selected_p_filter:
+            students = [s for s in students if s["count"] == 1]
+        elif "حصتين" in selected_p_filter:
+            students = [s for s in students if s["count"] == 2]
+        elif "(3)" in selected_p_filter:
+            students = [s for s in students if s["count"] == 3]
+        elif "(4)" in selected_p_filter:
+            students = [s for s in students if s["count"] == 4]
+        elif "(5)" in selected_p_filter:
+            students = [s for s in students if s["count"] == 5]
+        elif "(6)" in selected_p_filter:
+            students = [s for s in students if s["count"] == 6]
+        elif "(7)" in selected_p_filter:
+            students = [s for s in students if s["count"] >= 7]
+        elif "الحصة 1" in selected_p_filter:
+            students = [s for s in students if any("1" in p for p in s["periods"])]
+        elif "الحصة 2" in selected_p_filter:
+            students = [s for s in students if any("2" in p for p in s["periods"])]
+        elif "الحصة 3" in selected_p_filter:
+            students = [s for s in students if any("3" in p for p in s["periods"])]
+        elif "الحصة 4" in selected_p_filter:
+            students = [s for s in students if any("4" in p for p in s["periods"])]
+        elif "الحصة 5" in selected_p_filter:
+            students = [s for s in students if any("5" in p for p in s["periods"])]
+        elif "الحصة 6" in selected_p_filter:
+            students = [s for s in students if any("6" in p for p in s["periods"])]
+        elif "الحصة 7" in selected_p_filter:
+            students = [s for s in students if any("7" in p for p in s["periods"])]
 
     multi = [s for s in students if s["count"] > 1]
     with_phone = sum(1 for s in students if s["phone"])
