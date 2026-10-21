@@ -1857,6 +1857,61 @@ def render_super_admin_tools(df):
     # ---------- (6) رسائل الغياب (واتس / مورا) ----------
     with t_msg:
         render_absence_messaging(df, contacts)
+
+# =========================================================
+# تقرير الطلاب الحاضرين جميع الحصص (HTML قابل للطباعة / حفظ PDF)
+# =========================================================
+def generate_all_present_report_html(present_list, sel_date):
+    rows_html = ""
+    for idx, s in enumerate(present_list, 1):
+        periods_txt = _esc("، ".join(s.get("periods", [])))
+        rows_html += (f'<tr><td>{idx}</td>'
+                      f'<td style="text-align:right;"><b>{_esc(s["name"])}</b><br><small style="color:#64748B;">الهوية: {_esc(s["id"])}</small></td>'
+                      f'<td>{_esc(s["grade"])}</td><td>{_esc(s["section"])}</td>'
+                      f'<td style="color:#16A34A;font-weight:bold;">{s.get("count", 0)} حصص</td>'
+                      f'<td>{periods_txt}</td>'
+                      f'<td style="color:#16A34A;font-weight:bold;">🟢 حاضر جميع الحصص</td></tr>')
+
+    html_code = f"""<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>تقرير الطلاب الحاضرين جميع الحصص - {sel_date}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+body {{ font-family:'Cairo',sans-serif; text-align:right; padding:25px; background:#FFF; color:#1E293B; direction:rtl; }}
+.header {{ text-align:center; border-bottom:3px solid #006C35; padding-bottom:12px; margin-bottom:20px; }}
+h2 {{ color:#006C35; margin:5px; font-weight:800; font-size:22px; }}
+h4 {{ color:#1E3A8A; margin:5px; font-weight:700; font-size:16px; }}
+.meta {{ text-align:center; color:#64748B; font-size:13px; margin-bottom:16px; font-weight:600; }}
+table {{ width:100%; border-collapse:collapse; margin-top:10px; }}
+th, td {{ border:1px solid #CBD5E1; padding:10px; text-align:center; font-size:13px; }}
+th {{ background:#006C35; color:white; font-weight:700; }}
+tr:nth-child(even) {{ background:#F0FDF4; }}
+</style>
+</head>
+<body>
+<div class="header">
+    {_logo_img_html()}<br>
+    <h2>🏫 مدرسة متوسطة الثغر النموذجية</h2>
+    <h4>🟢 تقرير الطلاب الحاضرين جميع الحصص الدراسية</h4>
+</div>
+<div class="meta">
+    📅 التاريخ: {sel_date} &nbsp;|&nbsp; 📊 إجمالي الطلاب الحاضرين بالكامل: {len(present_list)} طالب
+</div>
+<table>
+<thead>
+<tr><th>#</th><th>اسم الطالب</th><th>الصف</th><th>الفصل</th><th>عدد الحصص الحاضر بها</th><th>الحصص المرصودة</th><th>الحالة</th></tr>
+</thead>
+<tbody>
+{rows_html if rows_html else '<tr><td colspan="7">لا يوجد طلاب حاضرون في جميع الحصص لهذا اليوم.</td></tr>'}
+</tbody>
+</table>
+{_signatures_html()}
+</body>
+</html>"""
+    return html_code
+
 # =========================================================
 # تقرير الطلاب المتكرر غيابهم (HTML قابل للطباعة / حفظ PDF)
 # =========================================================
@@ -1988,6 +2043,7 @@ def render_absence_messaging(df, contacts):
     with col_p_filter:
         period_options = [
             "الكل (جميع الغائبين)",
+            "🟢 الطلاب الحاضرون جميع الحصص (المواظبون)",
             "غائب حصة واحدة (1)",
             "غائب حصتين (2)",
             "غائب (3) حصص",
@@ -2005,10 +2061,28 @@ def render_absence_messaging(df, contacts):
         ]
         selected_p_filter = st.selectbox("🎯 تصفية حسب الحصة / عدد الحصص:", period_options, key="abs_p_filter_opt")
 
+    df_day_all = df[df['التاريخ'] == sel_date].copy() if df is not None and not df.empty else pd.DataFrame()
+    students_present_all = []
+    if not df_day_all.empty:
+        for sid, g in df_day_all.groupby('رقم الطالب'):
+            name = str(g['اسم الطالب'].iloc[0])
+            grade = str(g['الصف'].iloc[0])
+            section = str(g['الفصل'].iloc[0])
+            statuses = g['الحالة'].tolist()
+            periods = sorted({str(p) for p in g['الحصة'].tolist()})
+            if all(s == 'حاضر' for s in statuses) and not any(s in ['غائب', 'خارج الفصل', 'متأخر'] for s in statuses):
+                ph = _resolve_phone(name, sid, contacts)
+                students_present_all.append({
+                    "id": str(sid), "name": name, "grade": grade, "section": section,
+                    "periods": periods, "count": len(periods), "phone": ph
+                })
+    students_present_all.sort(key=lambda x: (x['grade'], x['section'], x['name']))
+
     d_day = df[(df['التاريخ'] == sel_date) & (df['الحالة'] == 'غائب')].copy()
-    if d_day.empty:
+    if d_day.empty and selected_p_filter != "🟢 الطلاب الحاضرون جميع الحصص (المواظبون)":
         st.success("🎉 لا يوجد طلاب غائبون في هذا التاريخ.")
-        return
+        if not students_present_all:
+            return
 
     # تجميع كل طالب مرة واحدة مع عدد الحصص المسجل فيها غياب
     students = []
@@ -2023,7 +2097,9 @@ def render_absence_messaging(df, contacts):
     students.sort(key=lambda x: (-x['count'], x['name']))
 
     # 🎯 تصفية قائمة الطلاب بناءً على الحصة أو عدد الحصص المحددة دون المساس بباقي الكود
-    if selected_p_filter != "الكل (جميع الغائبين)":
+    if selected_p_filter == "🟢 الطلاب الحاضرون جميع الحصص (المواظبون)":
+        students = students_present_all
+    elif selected_p_filter != "الكل (جميع الغائبين)":
         if "حصة واحدة" in selected_p_filter:
             students = [s for s in students if s["count"] == 1]
         elif "حصتين" in selected_p_filter:
