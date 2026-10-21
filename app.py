@@ -1606,6 +1606,62 @@ MORA_USERNAME = "966508634881"
 MORA_PASSWORD = "THA@0508634881"
 
 # =========================================================
+# إعدادات الإرسال الآلي (واتساب UltraMsg + مورا)
+# =========================================================
+ULTRAMSG_INSTANCE = "instance192180"
+ULTRAMSG_TOKEN = "ngx02ek1w2we2pa5"
+ULTRAMSG_API_BASE = "https://api.ultramsg.com"
+
+def send_whatsapp_ultramsg(instance_id, token, phone, message):
+    """إرسال رسالة واتساب مباشرة من داخل البرنامج عبر واجهة UltraMsg. يعيد (نجاح, رسالة)."""
+    try:
+        import requests
+    except Exception:
+        return False, "مكتبة requests غير متوفرة في بيئة التشغيل."
+    ph = _wa_phone(phone)
+    if not ph:
+        return False, "رقم جوال غير صالح."
+    inst = str(instance_id or "").strip()
+    tok = str(token or "").strip()
+    if not inst or not tok:
+        return False, "أدخل رقم الـInstance والـToken أولاً."
+    url = f"{ULTRAMSG_API_BASE}/{inst}/messages/chat"
+    try:
+        resp = requests.post(url, data={"token": tok, "to": ph, "body": str(message or "")}, timeout=30)
+        try:
+            data = resp.json()
+        except Exception:
+            data = {"raw": resp.text}
+        low = str(data).lower()
+        if resp.status_code == 200 and ("sent" in low or "\"id\"" in low or "queued" in low or "true" in low):
+            return True, "تم الإرسال بنجاح."
+        return False, f"فشل الإرسال: {data}"
+    except Exception as ex:
+        return False, f"خطأ في الاتصال: {ex}"
+
+def send_mora_message(api_url, username, password, phone, message):
+    """إرسال عبر منصة مورا إذا توفّر رابط API رسمي (بعد الاشتراك). يعيد (نجاح, رسالة)."""
+    try:
+        import requests
+    except Exception:
+        return False, "مكتبة requests غير متوفرة في بيئة التشغيل."
+    api = str(api_url or "").strip()
+    if not api:
+        return False, "لا يوجد رابط API لمورا بعد (أدخله بعد الاشتراك لتفعيل الإرسال الآلي)."
+    ph = _wa_phone(phone)
+    try:
+        resp = requests.post(api, data={
+            "username": str(username or "").strip(),
+            "password": str(password or "").strip(),
+            "to": ph, "message": str(message or ""),
+        }, timeout=30)
+        if resp.status_code == 200:
+            return True, "تم إرسال الطلب إلى مورا."
+        return False, f"استجابة مورا: {resp.status_code} - {resp.text[:200]}"
+    except Exception as ex:
+        return False, f"خطأ في الاتصال بمورا: {ex}"
+
+# =========================================================
 # دالة عرض أدوات الإدارة المتقدمة (تُستدعى داخل صفحة الإدارة)
 # =========================================================
 def render_super_admin_tools(df):
@@ -1991,12 +2047,82 @@ def render_absence_messaging(df, contacts):
             if no_phone:
                 st.caption(f"⚠️ يوجد {len(no_phone)} طالب بلا جوال مسجّل؛ سيفتح الواتس بالرسالة لاختيار الرقم يدوياً.")
 
-    # ===== أيقونة (2): منصة مورا =====
-    with st.expander("🏛️  إرسال رسائل الغياب عبر منصة مورا", expanded=False):
+    # ===== أيقونة (2): واتساب آلي مباشر عبر UltraMsg =====
+    with st.expander("🚀  إرسال الواتس آلياً ومباشرةً من داخل البرنامج (UltraMsg)", expanded=False):
+        st.caption("يتم الإرسال مباشرةً من البرنامج دون فتح الواتس — عبر واجهة UltraMsg الرسمية.")
+        st.session_state.setdefault("um_instance", ULTRAMSG_INSTANCE)
+        st.session_state.setdefault("um_token", ULTRAMSG_TOKEN)
+        colU1, colU2 = st.columns(2)
+        with colU1:
+            um_instance = st.text_input("🔧 رقم الـInstance:", key="um_instance")
+        with colU2:
+            um_token = st.text_input("🔑 رمز الـToken:", type="password", key="um_token")
+        if not sel_students:
+            st.info("اختر طالباً واحداً على الأقل من القائمة الأعلى.")
+        else:
+            _targets = [s for s in sel_students if s["phone"]]
+            _no_ph = [s for s in sel_students if not s["phone"]]
+            st.markdown(f"<div style='font-weight:700;color:#0F2552;'>سيتم الإرسال إلى {len(_targets)} طالب لديهم جوال مسجّل.</div>", unsafe_allow_html=True)
+            if _no_ph:
+                st.caption(f"⚠️ {len(_no_ph)} طالب بلا جوال مسجّل سيتم تخطّيهم.")
+            if st.button("🚀 إرسال رسائل الغياب الآن عبر الواتس", type="primary", key="um_send_btn", use_container_width=True):
+                if not _targets:
+                    st.warning("لا يوجد طلاب لديهم جوال مسجّل للإرسال.")
+                else:
+                    ok_c, fail_c, fails = 0, 0, []
+                    prog = st.progress(0.0)
+                    for i, s in enumerate(_targets, 1):
+                        ok, info = send_whatsapp_ultramsg(um_instance, um_token, s["phone"], _compose(s))
+                        if ok:
+                            ok_c += 1
+                        else:
+                            fail_c += 1
+                            fails.append(f"{s['name']} ({s['phone']}): {info}")
+                        prog.progress(i / len(_targets))
+                    if ok_c:
+                        st.success(f"✅ تم إرسال {ok_c} رسالة بنجاح عبر الواتس.")
+                    if fail_c:
+                        st.error(f"❌ فشل إرسال {fail_c} رسالة.")
+                        with st.expander("عرض تفاصيل الرسائل التي فشلت"):
+                            st.code("\n".join(fails))
+
+    # ===== أيقونة (3): منصة مورا (ربط وإرسال) =====
+    with st.expander("🏛️  الربط بمنصة مورا والإرسال المباشر", expanded=False):
+        st.markdown("<div style='font-weight:800;color:#0F2552;'>🔗 بيانات الربط بمنصة مورا:</div>", unsafe_allow_html=True)
+        st.session_state.setdefault("mora_user", MORA_USERNAME)
+        st.session_state.setdefault("mora_pass", MORA_PASSWORD)
+        st.session_state.setdefault("mora_api", "")
+        colM1, colM2 = st.columns(2)
+        with colM1:
+            mora_user = st.text_input("👤 اسم المستخدم لمورا:", key="mora_user")
+        with colM2:
+            mora_pass = st.text_input("🔑 كلمة المرور لمورا:", type="password", key="mora_pass")
+        mora_api = st.text_input("🌐 رابط API لمورا (إن توفّر لديك بعد الاشتراك):", key="mora_api", placeholder="https://...")
+        if (mora_api or "").strip():
+            if sel_students:
+                if st.button("🏛️ إرسال رسائل الغياب الآن عبر مورا", type="primary", key="mora_send_btn", use_container_width=True):
+                    _mt = [s for s in sel_students if s["phone"]]
+                    ok_c, fail_c, fails = 0, 0, []
+                    prog = st.progress(0.0)
+                    for i, s in enumerate(_mt, 1):
+                        ok, info = send_mora_message(mora_api, mora_user, mora_pass, s["phone"], _compose(s))
+                        if ok:
+                            ok_c += 1
+                        else:
+                            fail_c += 1
+                            fails.append(f"{s['name']}: {info}")
+                        prog.progress(i / max(len(_mt), 1))
+                    if ok_c:
+                        st.success(f"✅ تم إرسال {ok_c} رسالة عبر مورا.")
+                    if fail_c:
+                        st.error(f"❌ فشل إرسال {fail_c} رسالة.")
+                        with st.expander("تفاصيل الإخفاقات"):
+                            st.code("\n".join(fails))
+            else:
+                st.info("اختر طالباً واحداً على الأقل للإرسال.")
+        else:
+            st.info("ℹ️ منصة مورا لا تتيح حالياً واجهة برمجية (API) عامة للإرسال الآلي من خارجها. بعد اشتراكك واستلامك رابط API الرسمي، الصقه في الحقل أعلاه ليعمل الإرسال المباشر فوراً. حتى ذلك الحين يمكنك استخدام الفتح اليدوي أدناه أو الإرسال الآلي عبر الواتس (UltraMsg).")
         st.markdown(f"<a class='ksa-btn mora-btn' href='{_esc(MORA_LOGIN_URL)}' target='_blank' rel='noopener'>🏛️ فتح منصة مورا وتسجيل الدخول</a>", unsafe_allow_html=True)
-        st.markdown("<div style='margin-top:8px;font-weight:800;color:#0F2552;'>🔑 بيانات الدخول لمنصة مورا:</div>", unsafe_allow_html=True)
-        st.code(f"اسم المستخدم: {MORA_USERNAME}\nكلمة المرور: {MORA_PASSWORD}")
-        st.caption("انسخ بيانات الدخول وسجّل الدخول في منصة مورا، ثم الصق قائمة الغائبين والنص التالي. (منصة مورا لا توفّر API للإرسال الآلي من خارجها).")
         if sel_students:
             mora_text = f"رسالة غياب بتاريخ {sel_date}:\n\n"
             for s in sel_students:
