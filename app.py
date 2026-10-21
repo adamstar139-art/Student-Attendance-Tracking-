@@ -52,7 +52,6 @@ def _signatures_html():
     </div>
 </div>
 """
-
 # =========================================================
 # 0. ربط قاعدة البيانات السحابية الدائمة (Supabase Cloud)
 # =========================================================
@@ -170,7 +169,6 @@ def save_student_attendance_to_db(records):
         st.error(f"حدث خطأ أثناء الحفظ: {ex}")
     finally:
         st.cache_data.clear()
-
 def delete_student_attendance_from_db(scope):
     sb = get_supabase()
     if sb is None:
@@ -303,6 +301,16 @@ def _fetch_roster_rows():
 
 def get_active_students_db():
     st_db = copy.deepcopy(STUDENTS_DB)
+    # إضافة الصفوف والفصول المخصصة الجديدة (إضافي)
+    for _row in _fetch_custom_structure_rows():
+        _g = str(_row.get("grade", "")).strip()
+        _s = str(_row.get("section", "")).strip()
+        if not _g:
+            continue
+        if _g not in st_db:
+            st_db[_g] = {}
+        if _s and _s not in st_db[_g]:
+            st_db[_g][_s] = []
     rows = _fetch_roster_rows()
     for row in rows:
         st_id = row.get("student_id")
@@ -314,6 +322,12 @@ def get_active_students_db():
                 st_db[g][s] = [x for x in st_db[g][s] if str(x['id']).strip() != str(st_id).strip()]
         if new_grade in st_db and new_section in st_db[new_grade]:
             st_db[new_grade][new_section].append({"id": str(st_id), "name": str(st_name)})
+    # إزالة الطلاب المحذوفين (إضافي)
+    _removed = _fetch_removed_students_set()
+    if _removed:
+        for g in list(st_db.keys()):
+            for s in list(st_db[g].keys()):
+                st_db[g][s] = [x for x in st_db[g][s] if str(x['id']).strip() not in _removed]
     return st_db
 
 # =========================================================
@@ -360,7 +374,6 @@ def get_active_teachers():
             names.append(nm)
         pw[nm] = str(row.get("password", "")).strip() or pw.get(nm, "101")
     return names, pw
-
 # =========================================================
 # قوائم الطلاب المحفورة
 # =========================================================
@@ -484,7 +497,6 @@ STUDENTS_DB = {
             {"id": "1167371093", "name": "يوسف عايد عواد البلوي"}
         ]
     },
-
     "الثالث المتوسط": {
         "ثالث أول (فصل 1)": [
             {"id": "1158966166", "name": "أصيل ناصر بن محمد مذكور"},
@@ -574,7 +586,6 @@ TEACHER_PASSWORDS = {
     "عماد بكر عارف": "110", "إبراهيم علي العتيبي": "111", "عيسى خالد العويس": "112",
     "زيد بن علي التميمي": "113"
 }
-
 # =========================================================
 # 1. تهيئة صفحة Streamlit والتنسيق (RTL & CSS احترافي)
 # =========================================================
@@ -710,7 +721,63 @@ div[role="radiogroup"] {
 </style>
 """, unsafe_allow_html=True)
 
-
+# =========================================================
+# تنسيقات وطنية سعودية إضافية (دون المساس بالتنسيق الأصلي) + أزرار احترافية
+# =========================================================
+st.markdown("""
+<style>
+:root { --ksa-green:#006C35; --ksa-dark:#004D25; --ksa-gold:#D4AF37; }
+/* أزرار احترافية تشبه button مع تدرج سعودي */
+.stButton > button, .stDownloadButton > button {
+    background: linear-gradient(135deg, #0F2552 0%, #1E3A8A 100%) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 10px 16px !important;
+    box-shadow: 0 4px 12px rgba(15,37,82,0.18) !important;
+    font-weight: 800 !important;
+}
+.stButton > button:hover, .stDownloadButton > button:hover {
+    background: linear-gradient(135deg, #006C35 0%, #004D25 100%) !important;
+    box-shadow: 0 6px 16px rgba(0,108,53,0.25) !important;
+    transform: translateY(-2px) !important;
+}
+.stButton > button[kind="primary"] {
+    background: linear-gradient(135deg, #006C35 0%, #004D25 100%) !important;
+    border: 1px solid var(--ksa-gold) !important;
+}
+/* روابط واتس/مورا بشكل زر */
+a.ksa-btn {
+    display:inline-block; text-decoration:none !important; text-align:center;
+    padding:10px 14px; border-radius:12px; font-weight:800; margin:4px 2px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.12); transition:all .2s ease; color:#fff !important;
+}
+a.ksa-btn:hover { transform:translateY(-2px); }
+a.wa-btn { background:linear-gradient(135deg,#25D366,#128C7E); }
+a.mora-btn { background:linear-gradient(135deg,#006C35,#004D25); border:1px solid var(--ksa-gold); }
+/* شريط وطني علوي */
+.ksa-ribbon {
+    background: linear-gradient(135deg,#006C35 0%, #004D25 100%);
+    border:2px solid var(--ksa-gold); border-radius:16px; padding:16px 20px;
+    margin-bottom:18px; color:#fff; text-align:center;
+    box-shadow:0 6px 18px rgba(0,108,53,0.25);
+}
+.ksa-ribbon h3 { color:#fff; margin:4px 0; font-weight:800; }
+.ksa-ribbon .tag { background:rgba(255,255,255,0.12); border:1px solid rgba(212,175,55,0.5);
+    padding:6px 14px; border-radius:30px; display:inline-block; color:#F3E5AB; font-weight:700; font-size:14px; }
+.admin-section-title {
+    background:linear-gradient(135deg,#0F2552,#1E3A8A); color:#fff; border-right:5px solid var(--ksa-gold);
+    border-radius:12px; padding:12px 16px; margin:14px 0; font-weight:800; font-size:17px;
+}
+.absent-chip { background:#FEF2F2; border:1px solid #FECACA; border-radius:10px; padding:8px 12px;
+    margin:4px 0; display:block; color:#991B1B; font-weight:700; }
+@media (max-width: 640px) {
+    .stButton > button, .stDownloadButton > button { width:100% !important; }
+    a.ksa-btn { display:block; width:100%; }
+    .ksa-ribbon h3 { font-size:17px; }
+}
+</style>
+""", unsafe_allow_html=True)
 # شريط حالة الاتصال بالشريط الجانبي
 if supabase_ready():
     st.sidebar.markdown("<div style='text-align:center; margin-bottom:15px;'><span class='status-badge-ok'>🟢 متصل بسحابة Supabase</span></div>", unsafe_allow_html=True)
@@ -795,7 +862,6 @@ tr:nth-child(even) {{ background:#F8FAFC; }}
 </body>
 </html>"""
     return html_code
-
 def generate_teacher_range_report_html(teacher_summary_list, start_d, end_d, cal_system):
     rows_html = ""
     for idx, rec in enumerate(teacher_summary_list, 1):
@@ -921,7 +987,6 @@ th {{ background:#0F2552; color:white; font-weight:700; }}
 </body>
 </html>"""
     return html_code
-
 def generate_charts_report_html(counts_rows, report_label, hijri_label):
     """يولّد تقرير HTML مستقل برسوم أعمدة (حاضر/غائب/متأخر) لكل حصة ضمن كل فصل وصف — CSS نقي مدمج قابل للطباعة."""
     grades_order = []
@@ -1028,7 +1093,6 @@ h4 {{ color:#4B5563; margin:5px; font-weight:700; font-size:16px; }}
 </body>
 </html>"""
     return html_code
-
 def generate_landscape_grid_html(counts_rows, report_label, hijri_label):
     """تقرير عرضي (Landscape) يجمع كل فصول المدرسة في صفحة واحدة:
     صفوف = الفصول، أعمدة = الحصص، وكل خلية تظهر اسم المعلم وعدد الحضور."""
@@ -1125,7 +1189,406 @@ th {{ background:#0F2552; color:#FFFFFF; font-weight:700; font-size:12px; }}
 </body>
 </html>"""
     return html_code
+# =========================================================
+# أدوات إدارية متقدمة (إضافية بالكامل — دون المساس بالكود الأصلي)
+# جداول Supabase جديدة ببادئة thaghr_ : الهيكل (صف/فصل) + المحذوفين + جوالات التواصل
+# =========================================================
+@st.cache_data(ttl=5, show_spinner=False)
+def _fetch_custom_structure_rows():
+    sb = get_supabase()
+    if sb is None:
+        return []
+    try:
+        res = sb.table("thaghr_custom_structure").select("grade, section").limit(50000).execute()
+        return res.data or []
+    except Exception:
+        return []
 
+def add_grade_section_db(grade, section=""):
+    """تضيف صفًا جديدًا (واختياريًا فصلًا) وتحفظه بشكل دائم."""
+    sb = get_supabase()
+    if sb is None:
+        st.error("❌ لم يتم الاتصال بقاعدة البيانات.")
+        return False
+    try:
+        sb.table("thaghr_custom_structure").upsert({
+            "grade": str(grade).strip(),
+            "section": str(section).strip(),
+        }).execute()
+        st.cache_data.clear()
+        return True
+    except Exception as ex:
+        st.error(f"خطأ أثناء إضافة الصف/الفصل: {ex}")
+        return False
+
+@st.cache_data(ttl=5, show_spinner=False)
+def _fetch_removed_students_rows():
+    sb = get_supabase()
+    if sb is None:
+        return []
+    try:
+        res = sb.table("thaghr_removed_students").select("student_id").limit(50000).execute()
+        return res.data or []
+    except Exception:
+        return []
+
+def _fetch_removed_students_set():
+    return {str(r.get("student_id", "")).strip() for r in _fetch_removed_students_rows() if str(r.get("student_id", "")).strip()}
+
+def remove_student_db(student_id):
+    """تسجّل حذف طالب (يختفي من القوائم) دون المساس بسجلات الحضور السابقة."""
+    sb = get_supabase()
+    if sb is None:
+        st.error("❌ لم يتم الاتصال بقاعدة البيانات.")
+        return False
+    try:
+        sb.table("thaghr_removed_students").upsert({"student_id": str(student_id).strip()}).execute()
+        # إزالة أي وجود للطالب في جدول النقل المخصص حتى لا يعود
+        try:
+            sb.table("thaghr_custom_student_roster").delete().eq("student_id", str(student_id).strip()).execute()
+        except Exception:
+            pass
+        st.cache_data.clear()
+        return True
+    except Exception as ex:
+        st.error(f"خطأ أثناء حذف الطالب: {ex}")
+        return False
+
+def clear_removed_student_db(student_id):
+    """تلغي حذف طالب سابق عند إعادة إضافته."""
+    sb = get_supabase()
+    if sb is None:
+        return
+    try:
+        sb.table("thaghr_removed_students").delete().eq("student_id", str(student_id).strip()).execute()
+    except Exception:
+        pass
+    finally:
+        st.cache_data.clear()
+
+@st.cache_data(ttl=5, show_spinner=False)
+def _fetch_contact_rows():
+    sb = get_supabase()
+    if sb is None:
+        return []
+    try:
+        res = sb.table("thaghr_student_contacts").select("student_id, phone, guardian").limit(50000).execute()
+        return res.data or []
+    except Exception:
+        return []
+
+def get_student_contacts():
+    out = {}
+    for r in _fetch_contact_rows():
+        sid = str(r.get("student_id", "")).strip()
+        if sid:
+            out[sid] = {"phone": str(r.get("phone", "")).strip(), "guardian": str(r.get("guardian", "")).strip()}
+    return out
+
+def set_student_contact_db(student_id, phone, guardian=""):
+    sb = get_supabase()
+    if sb is None:
+        return
+    try:
+        sb.table("thaghr_student_contacts").upsert({
+            "student_id": str(student_id).strip(),
+            "phone": str(phone).strip(),
+            "guardian": str(guardian).strip(),
+        }).execute()
+    except Exception:
+        pass
+    finally:
+        st.cache_data.clear()
+
+def _wa_phone(raw):
+    """تحوّل الجوال السعودي إلى صيغة دولية لروابط واتس آب."""
+    import re as _re_p
+    d = _re_p.sub(r"\D", "", str(raw or ""))
+    if not d:
+        return ""
+    if d.startswith("00"):
+        d = d[2:]
+    if d.startswith("966"):
+        return d
+    if d.startswith("0") and len(d) == 10:
+        return "966" + d[1:]
+    if len(d) == 9 and d.startswith("5"):
+        return "966" + d
+    return d
+
+def _wa_link(phone, message):
+    import urllib.parse as _up
+    ph = _wa_phone(phone)
+    txt = _up.quote(str(message or ""))
+    if ph:
+        return f"https://wa.me/{ph}?text={txt}"
+    return f"https://wa.me/?text={txt}"
+
+def _esc(t):
+    """تهريب نص HTML بسيط لعرضه داخل أزرار/بطاقات بأمان."""
+    s = str(t if t is not None else "")
+    return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+             .replace('"', "&quot;").replace("'", "&#39;"))
+# =========================================================
+# دالة عرض أدوات الإدارة المتقدمة (تُستدعى داخل صفحة الإدارة)
+# =========================================================
+def render_super_admin_tools(df):
+    students_db = get_active_students_db()
+    contacts = get_student_contacts()
+
+    st.markdown("<div class='ksa-ribbon'><div class='tag'>🇸🇦 المملكة العربية السعودية</div><h3>🏫 لوحة الإدارة الاحترافية — مدرسة متوسطة الثغر النموذجية 🌴⚔️</h3><div style='opacity:.95;font-weight:600;'>أدوات شاملة لإدارة الطلاب والمعلمين والصفوف ورسائل الغياب</div></div>", unsafe_allow_html=True)
+    st.markdown("<div class='admin-section-title'>🛠️ أدوات الإدارة المتقدمة (إضافة / ترحيل / حذف / رسائل)</div>", unsafe_allow_html=True)
+
+    t_excel, t_move, t_del, t_teacher, t_struct, t_msg = st.tabs([
+        "📤 رفع طلاب (إكسل)",
+        "🔄 ترحيل الطلاب",
+        "🗑️ حذف طلاب",
+        "👨‍🏫 إضافة معلم",
+        "➕ إضافة صف / فصل",
+        "📱 رسائل الغياب",
+    ])
+
+    # ---------- (1) رفع الطلاب عبر ملف إكسل ----------
+    with t_excel:
+        st.markdown("#### 📤 إضافة طلاب دفعة واحدة من ملف Excel / CSV")
+        st.info("💡 اختر الصف ثم الفصل ثم ارفع الملف. الأعمدة المدعومة: اسم الطالب / الاسم — رقم الطالب / الهوية — (اختياري) الجوال — (اختياري) ولي الأمر.")
+        ex_g = st.selectbox("الصف الدراسي:", list(students_db.keys()), key="xl_grade")
+        ex_s = st.selectbox("الفصل:", list(students_db.get(ex_g, {}).keys()) or ["(لا توجد فصول بعد)"], key="xl_sec")
+        up = st.file_uploader("📁 ارفع ملف الطلاب (xlsx / xls / csv):", type=["xlsx", "xls", "csv"], key="xl_up")
+        if up is not None:
+            try:
+                if up.name.lower().endswith("csv"):
+                    df_up = pd.read_csv(up, dtype=str)
+                else:
+                    df_up = pd.read_excel(up, dtype=str)
+                df_up = df_up.fillna("")
+                df_up.columns = [str(c).strip() for c in df_up.columns]
+
+                def _pick(cols, options):
+                    for o in options:
+                        for c in cols:
+                            if o in str(c):
+                                return c
+                    return None
+                name_col = _pick(df_up.columns, ["اسم الطالب", "الاسم", "اسم", "name", "Name"])
+                id_col = _pick(df_up.columns, ["رقم الطالب", "الهوية", "السجل", "الرقم", "id", "ID"])
+                phone_col = _pick(df_up.columns, ["جوال", "الجوال", "جوال ولي", "الجوال ولي", "phone", "Phone", "mobile"])
+                guard_col = _pick(df_up.columns, ["ولي الأمر", "ولي", "guardian"])
+                st.markdown("##### 👁️ معاينة أول صفوف الملف:")
+                st.dataframe(df_up.head(10), use_container_width=True)
+                if not name_col or not id_col:
+                    st.error("❌ تعذّر التعرف على عمود الاسم أو رقم الهوية. تأكد من وجود عمود باسم (اسم الطالب) وآخر (رقم الطالب).")
+                else:
+                    st.success(f"✅ تم التعرف على الأعمدة: الاسم = ({name_col}) ، الهوية = ({id_col})" + (f" ، الجوال = ({phone_col})" if phone_col else ""))
+                    if st.button("💾 استيراد وحفظ الطلاب في الفصل المحدد", type="primary", key="xl_import_btn"):
+                        if ex_s.startswith("("):
+                            st.error("⚠️ أضف فصلاً لهذا الصف أولاً من تبويب (إضافة صف / فصل).")
+                        else:
+                            added = 0
+                            for _, rr in df_up.iterrows():
+                                nm = str(rr.get(name_col, "")).strip()
+                                sid = str(rr.get(id_col, "")).strip()
+                                if not nm or not sid:
+                                    continue
+                                clear_removed_student_db(sid)
+                                add_student_db(sid, nm, ex_g, ex_s)
+                                if phone_col:
+                                    ph = str(rr.get(phone_col, "")).strip()
+                                    gd = str(rr.get(guard_col, "")).strip() if guard_col else ""
+                                    if ph:
+                                        set_student_contact_db(sid, ph, gd)
+                                added += 1
+                            st.cache_data.clear()
+                            st.success(f"✨ تم استيراد وحفظ {added} طالباً بنجاح في ({ex_g} - {ex_s})!")
+                            st.rerun()
+            except Exception as ex:
+                st.error(f"تعذّر قراءة الملف: {ex}")
+
+    # ---------- (2) ترحيل الطلاب ----------
+    with t_move:
+        st.markdown("#### 🔄 ترحيل طلاب من صف/فصل إلى آخر (فردي أو جماعي)")
+        mv_g = st.selectbox("الصف الحالي:", list(students_db.keys()), key="mv2_g")
+        mv_s = st.selectbox("الفصل الحالي:", list(students_db.get(mv_g, {}).keys()) or ["(لا يوجد)"], key="mv2_s")
+        cur_list = students_db.get(mv_g, {}).get(mv_s, []) if not str(mv_s).startswith("(") else []
+        if cur_list:
+            label_map = {f"{x['name']} ({x['id']})": x for x in cur_list}
+            chosen = st.multiselect("اختر الطلاب المراد ترحيلهم:", list(label_map.keys()), key="mv2_pick")
+            mv_tg = st.selectbox("الصف الجديد (الوجهة):", list(students_db.keys()), key="mv2_tg")
+            mv_ts = st.selectbox("الفصل الجديد (الوجهة):", list(students_db.get(mv_tg, {}).keys()) or ["(لا يوجد)"], key="mv2_ts")
+            if st.button("🔄 ترحيل الطلاب المحددين", type="primary", key="mv2_btn"):
+                if not chosen:
+                    st.warning("⚠️ اختر طالبًا واحدًا على الأقل.")
+                elif str(mv_ts).startswith("("):
+                    st.error("⚠️ اختر فصلاً للوجهة.")
+                else:
+                    for lbl in chosen:
+                        stu = label_map[lbl]
+                        move_student_db(stu['id'], stu['name'], mv_tg, mv_ts)
+                    st.cache_data.clear()
+                    st.success(f"✨ تم ترحيل {len(chosen)} طالباً إلى ({mv_tg} - {mv_ts})!")
+                    st.rerun()
+        else:
+            st.warning("لا يوجد طلاب في هذا الفصل حالياً.")
+
+    # ---------- (3) حذف الطلاب ----------
+    with t_del:
+        st.markdown("#### 🗑️ حذف طلاب من فصل محدد")
+        st.warning("⚠️ الحذف يُخفي الطالب من القوائم فقط ولا يمس سجلات الحضور السابقة (يمكن إعادته بإضافته مجددًا).")
+        dl_g = st.selectbox("الصف:", list(students_db.keys()), key="dl_g")
+        dl_s = st.selectbox("الفصل:", list(students_db.get(dl_g, {}).keys()) or ["(لا يوجد)"], key="dl_s")
+        dl_list = students_db.get(dl_g, {}).get(dl_s, []) if not str(dl_s).startswith("(") else []
+        if dl_list:
+            dl_map = {f"{x['name']} ({x['id']})": x for x in dl_list}
+            dl_pick = st.multiselect("اختر الطلاب المراد حذفهم:", list(dl_map.keys()), key="dl_pick")
+            dl_conf = st.checkbox("أؤكد حذف الطلاب المحددين", key="dl_conf")
+            if st.button("🗑️ حذف الطلاب المحددين", type="primary", key="dl_btn"):
+                if not dl_pick:
+                    st.warning("⚠️ اختر طالبًا واحدًا على الأقل.")
+                elif not dl_conf:
+                    st.error("يرجى التأشير على التأكيد أولاً.")
+                else:
+                    for lbl in dl_pick:
+                        remove_student_db(dl_map[lbl]['id'])
+                    st.cache_data.clear()
+                    st.success(f"🗑️ تم حذف {len(dl_pick)} طالباً بنجاح.")
+                    st.rerun()
+        else:
+            st.info("لا يوجد طلاب في هذا الفصل.")
+
+    # ---------- (4) إضافة معلم ----------
+    with t_teacher:
+        st.markdown("#### 👨‍🏫 إضافة معلم جديد ورقمه السري")
+        _names_now, _ = get_active_teachers()
+        tn = st.text_input("اسم المعلم:", key="adm_tn")
+        tp = st.text_input("🔑 الرقم السري (3 أرقام):", key="adm_tp", max_chars=3)
+        if st.button("➕ إضافة المعلم", type="primary", key="adm_tn_btn"):
+            nm = (tn or "").strip()
+            pw = (tp or "").strip()
+            if not nm:
+                st.warning("⚠️ أدخل اسم المعلم.")
+            elif len(pw) != 3 or not pw.isdigit():
+                st.warning("⚠️ الرقم السري يجب أن يكون 3 أرقام.")
+            elif nm in _names_now:
+                st.warning(f"⚠️ المعلم ({nm}) موجود مسبقاً.")
+            else:
+                if add_teacher_db(nm, pw):
+                    st.success(f"✅ تمت إضافة المعلم ({nm}) بنجاح!")
+                    st.rerun()
+
+    # ---------- (5) إضافة صف / فصل ----------
+    with t_struct:
+        cS1, cS2 = st.columns(2)
+        with cS1:
+            st.markdown("#### ➕ إضافة صف دراسي جديد")
+            ng = st.text_input("اسم الصف الجديد (مثال: الأول الثانوي):", key="str_ng")
+            if st.button("➕ إضافة الصف", type="primary", key="str_ng_btn"):
+                if (ng or "").strip():
+                    if add_grade_section_db(ng.strip(), ""):
+                        st.success(f"✅ تمت إضافة الصف ({ng.strip()})!")
+                        st.rerun()
+                else:
+                    st.warning("⚠️ أدخل اسم الصف.")
+        with cS2:
+            st.markdown("#### ➕ إضافة فصل داخل صف")
+            sg = st.selectbox("اختر الصف:", list(students_db.keys()), key="str_sg")
+            nsec = st.text_input("اسم الفصل الجديد (مثال: أول ثالث (فصل 3)):", key="str_nsec")
+            if st.button("➕ إضافة الفصل", type="primary", key="str_nsec_btn"):
+                if (nsec or "").strip():
+                    if add_grade_section_db(sg, nsec.strip()):
+                        st.success(f"✅ تمت إضافة الفصل ({nsec.strip()}) إلى ({sg})!")
+                        st.rerun()
+                else:
+                    st.warning("⚠️ أدخل اسم الفصل.")
+
+    # ---------- (6) رسائل الغياب (واتس / مورا) ----------
+    with t_msg:
+        render_absence_messaging(df, contacts)
+# =========================================================
+# دالة رسائل الغياب (واتس آب + منصة مورا)
+# =========================================================
+def render_absence_messaging(df, contacts):
+    st.markdown("#### 📱 استدعاء الطلاب الغائبين وإرسال رسائل الغياب")
+    st.info("💡 حدّد التاريخ لاستدعاء الغائبين (كل طالب مرة واحدة حتى لو غاب في أكثر من حصة)، ثم أرسل رسالة الغياب عبر الواتس آب أو منصة مورا.")
+
+    if df is None or df.empty:
+        st.info("لا توجد بيانات حضور مرصودة بعد.")
+        return
+
+    dates_av = sorted(list(df['التاريخ'].unique()), reverse=True)
+    default_idx = 0
+    if str(date.today()) in dates_av:
+        default_idx = dates_av.index(str(date.today()))
+    sel_date = st.selectbox("📅 اختر تاريخ الغياب:", dates_av, index=default_idx if dates_av else 0, key="abs_msg_date")
+
+    d_day = df[(df['التاريخ'] == sel_date) & (df['الحالة'] == 'غائب')].copy()
+    if d_day.empty:
+        st.success("🎉 لا يوجد طلاب غائبون في هذا التاريخ.")
+        return
+
+    # تجميع كل طالب مرة واحدة مع عدد الحصص المسجل فيها غياب
+    students = []
+    for sid, g in d_day.groupby('رقم الطالب'):
+        name = str(g['اسم الطالب'].iloc[0])
+        periods = sorted({str(p) for p in g['الحصة'].tolist()})
+        grade = str(g['الصف'].iloc[0])
+        section = str(g['الفصل'].iloc[0])
+        ph = contacts.get(str(sid).strip(), {}).get('phone', '')
+        students.append({"id": str(sid), "name": name, "periods": periods, "count": len(periods),
+                         "grade": grade, "section": section, "phone": ph})
+    students.sort(key=lambda x: (-x['count'], x['name']))
+
+    multi = [s for s in students if s['count'] > 1]
+    st.markdown(f"<div style='color:#0F2552;font-weight:800;margin:8px 0;'>📌 إجمالي الغائبين: {len(students)} طالب &nbsp;|&nbsp; غائبون في أكثر من حصة: {len(multi)}</div>", unsafe_allow_html=True)
+
+    if multi:
+        chips = "".join(f"<span class='absent-chip'>🔴 {_esc(s['name'])} — {s['count']} حصص ({_esc('، '.join(s['periods']))})</span>" for s in multi)
+        st.markdown("<div style='margin-bottom:10px;'><b>الطلاب المتكرر غيابهم (أكثر من حصة):</b></div>" + chips, unsafe_allow_html=True)
+
+    # جدول عرض الغائبين
+    df_show = pd.DataFrame([{
+        "اسم الطالب": s['name'], "رقم الطالب": s['id'], "الصف": s['grade'], "الفصل": s['section'],
+        "عدد حصص الغياب": s['count'], "الجوال": s['phone'] or "—"
+    } for s in students])
+    st.dataframe(df_show, use_container_width=True)
+
+    # اختيار الطلاب المراد مراسلتهم
+    opt_map = {f"{s['name']} ({s['id']})" + ("" if s['phone'] else " — بلا جوال"): s for s in students}
+    picked = st.multiselect("✉️ حدد الطلاب المراد إرسال رسالة الغياب لهم:", list(opt_map.keys()), default=list(opt_map.keys()), key="abs_pick")
+    sel_students = [opt_map[k] for k in picked]
+
+    default_msg = ("السلام عليكم ورحمة الله، نحيطكم علماً بأن ابنكم الطالب {name} "
+                   "قد تغيّب عن المدرسة بتاريخ {date}. نأمل متابعته وإفادتنا بالسبب. "
+                   "مع الشكر — مدرسة متوسطة الثغر النموذجية.")
+    msg_tmpl = st.text_area("📝 نص رسالة الغياب (يمكنك استخدام {name} لاسم الطالب و {date} للتاريخ):", value=default_msg, height=130, key="abs_msg_tmpl")
+
+    def _compose(s):
+        return (msg_tmpl or "").replace("{name}", s['name']).replace("{date}", str(sel_date))
+
+    st.markdown("<div class='admin-section-title' style='font-size:15px;'>🟢 الإرسال عبر الواتس آب</div>", unsafe_allow_html=True)
+    st.caption("اضغط زر الطالب لفتح محادثة واتس آب بالرسالة جاهزة (للطلاب الذين لديهم جوال مسجّل).")
+    if sel_students:
+        links_html = "<div style='display:flex;flex-wrap:wrap;gap:8px;margin:6px 0;'>"
+        for s in sel_students:
+            link = _wa_link(s['phone'], _compose(s))
+            tag = "" if s['phone'] else " ⚠️"
+            links_html += f"<a class='ksa-btn wa-btn' href='{_esc(link)}' target='_blank' rel='noopener'>📱 {_esc(s['name'])}{tag}</a>"
+        links_html += "</div>"
+        st.markdown(links_html, unsafe_allow_html=True)
+        st.caption("⚠️ = لا يوجد جوال مسجّل لهذا الطالب؛ سيفتح واتس آب بالرسالة لتختار الرقم يدوياً.")
+    else:
+        st.info("اختر طالبًا واحدًا على الأقل لإظهار أزرار الإرسال.")
+
+    st.markdown("<div class='admin-section-title' style='font-size:15px;'>🏛️ الإرسال عبر منصة مورا</div>", unsafe_allow_html=True)
+    st.markdown("<a class='ksa-btn mora-btn' href='https://mora-sa.com/login' target='_blank' rel='noopener'>🏛️ فتح منصة مورا لإرسال الغياب</a>", unsafe_allow_html=True)
+    st.caption("يتم تسجيل الغياب داخل منصة مورا مباشرة؛ انسخ النص وقائمة الطلاب التالية والصقها في المنصة.")
+    if sel_students:
+        mora_text = f"رسالة غياب بتاريخ {sel_date}:\n\n"
+        for s in sel_students:
+            mora_text += f"- {s['name']} (الهوية: {s['id']} | {s['grade']} - {s['section']}) | الجوال: {s['phone'] or 'غير مسجل'}\n"
+        mora_text += "\n" + (msg_tmpl or "").replace("{name}", "الطالب").replace("{date}", str(sel_date))
+        st.code(mora_text)
+        st.download_button("⬇️ تحميل قائمة الغائبين (CSV)", data=df_show.to_csv(index=False).encode('utf-8-sig'),
+                           file_name=f"الغائبون_{sel_date}.csv", mime="text/csv", key="abs_csv_dl", use_container_width=True)
 # =========================================================
 # اختيار لوحة التحكم
 # =========================================================
@@ -1247,7 +1710,6 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
         st.info(f"🔒 يرجى إدخال كلمة المرور المكونة من 3 أرقام الخاصة بالمعلم ({teacher_name}) للمتابعة.")
     else:
         st.error(f"❌ كلمة المرور غير صحيحة للمعلم ({teacher_name})! يرجى التأكد وإعادة المحاولة.")
-
 # =========================================================
 # 8. حساب الوكيل والمدير
 # =========================================================
@@ -1278,6 +1740,11 @@ else:
         st.write("---")
         df = load_student_attendance_db()
         teacher_logs_db = load_teacher_logs_from_db()
+
+        # ===== أدوات الإدارة المتقدمة (إضافي) =====
+        with st.expander("🛠️ أدوات الإدارة المتقدمة (طلاب / معلمين / صفوف / رسائل غياب واتس ومورا)", expanded=True):
+            render_super_admin_tools(df)
+        st.write("---")
 
         metric_dates = ["📆 الكل (إجمالي السجل)"] + (sorted(list(df['التاريخ'].unique()), reverse=True) if not df.empty else [])
         metric_day = st.selectbox("📅 اختر اليوم لعرض إحصائياته (تتغير العدادات تلقائياً):", metric_dates, key="metric_day_sel")
@@ -1327,7 +1794,6 @@ else:
                         st.rerun()
                     else:
                         st.error("يرجى التأشير على التأكيد أولاً.")
-
         st.write("---")
         st.markdown("### 🖨️ تقرير الحصص والمعلمين وعدد الطلاب لكل فصل")
         with st.expander("📊 عرض وطباعة تقرير الحصص (الحصة / اسم المعلم / عدد الطلاب) لكل فصل", expanded=False):
@@ -1435,7 +1901,6 @@ else:
                 key="btn_export_landscape_grid",
                 use_container_width=True
             )
-
         st.write("---")
         st.markdown("### 🔍 فلترة وتخصيص بيانات التقارير والطباعة")
         students_db = get_active_students_db()
@@ -1605,7 +2070,6 @@ else:
                 col_down_t3.download_button(label="🖨️ طباعة تقرير المعلمين (PDF)", data=html_t_range.encode('utf-8'), file_name=f"تقرير_المعلمين_{cal_sys_name}_{start_report_date}_{end_report_date}.html", mime="text/html", key="btn_print_t_range", use_container_width=True)
             else:
                 st.info("👈 اختر نطاق التاريخ (من / إلى)، ثم انقر على زر **`▶️ بدء عرض التقرير`** للبدء.")
-
         with tab_manage_students:
             st.markdown("### 🎓 إدارة الطلاب (نقل فصول الطلاب وإضافة طلاب جدد)")
             col_m1, col_m2 = st.columns(2)
@@ -1636,6 +2100,7 @@ else:
                 add_s = st.selectbox("الفصل:", list(students_db[add_g].keys()), key="add_st_s")
                 if st.button("➕ إضافة الطالب للقائمة", type="primary", key="btn_confirm_add_student"):
                     if new_st_name.strip() and new_st_id.strip():
+                        clear_removed_student_db(new_st_id.strip())
                         add_student_db(new_st_id.strip(), new_st_name.strip(), add_g, add_s)
                         st.success(f"✨ تمت إضافة الطالب ({new_st_name}) بنجاح إلى ({add_g} - {add_s})!")
                         st.rerun()
