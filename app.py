@@ -2107,6 +2107,26 @@ if role == "👨‍🏫 حساب المعلم (رصد الحضور)":
 
         students_list = students_db[grade][section]
 
+        # ⚙️ تنبيه عند رصد حصة تم رصدها من قبل (إضافي صرف)
+        try:
+            _dup_df = load_student_attendance_db()
+            if not _dup_df.empty:
+                _already = _dup_df[
+                    (_dup_df['التاريخ'] == str(att_date)) &
+                    (_dup_df['الصف'] == grade) &
+                    (_dup_df['الفصل'] == section) &
+                    (_dup_df['الحصة'] == period)
+                ]
+                if not _already.empty:
+                    _prev_teacher = str(_already['اسم المعلم'].iloc[0])
+                    st.warning(
+                        f"⚠️ تنبيه: سبق رصد هذه الحصة ({period}) لفصل ({grade} - {section}) "
+                        f"بتاريخ {att_date} بواسطة المعلم ({_prev_teacher}) لعدد {len(_already)} طالب. "
+                        f"إذا تابعت الحفظ فسيتم تحديث/استبدال الرصد السابق."
+                    )
+        except Exception:
+            pass
+
         st.markdown(f"""
         <div style="background:#EFF6FF; border-right:5px solid #2563EB; padding:14px; border-radius:10px; margin-top:10px; margin-bottom:20px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
             <span style="font-weight:700; color:#1E3A8A; font-size:15px;">
@@ -2161,6 +2181,8 @@ elif role == "👔 حساب الوكيل والمدير (المتابعة وال
 
     if _logo_data_uri():
         st.markdown(f"<div style='text-align:center; margin-bottom:10px;'><img src='{_logo_data_uri()}' alt='شعار مدارس الثغر النموذجية' style='height:90px; width:auto;' /></div>", unsafe_allow_html=True)
+
+    st.markdown("<div class='ksa-ribbon'><div class='tag'>🇸🇦 المملكة العربية السعودية</div><h3>👔 لوحة الوكيل والمدير — مدرسة متوسطة الثغر النموذجية 🌴⚔️</h3><div style='opacity:.95;font-weight:600;'>متابعة الحضور والغياب وتصدير التقارير الرسمية</div></div>", unsafe_allow_html=True)
 
     if not st.session_state['admin_authenticated']:
         st.warning("🔒 هذه اللوحة مخصصة لإدارة المدرسة فقط. يرجى إدخال كلمة المرور للمتابعة:")
