@@ -96,7 +96,7 @@ def supabase_ready():
 # --- دوال قراءة وحفظ حضور الطلاب ---
 STU_COLS = ["التاريخ", "اسم المعلم", "الصف", "الفصل", "الحصة", "رقم الطالب", "اسم الطالب", "الحالة"]
 
-@st.cache_data(ttl=5, show_spinner=False)
+@st.cache_data(ttl=45, show_spinner=False)
 def _fetch_student_rows():
     sb = get_supabase()
     if sb is None:
@@ -147,10 +147,14 @@ def save_student_attendance_to_db(records):
         st.error("❌ لم يتم الاتصال بـ Supabase. يرجى التأكد من إضافة url و key في Secrets.")
         return
     try:
+        # حذف مجمّع سريع لكل تركيبة (تاريخ/صف/فصل/حصة) دفعة واحدة بدل حذف لكل طالب (تسريع الحفظ)
+        combos = set()
         for r in records:
+            combos.add((str(r['التاريخ']), str(r['الصف']), str(r['الفصل']), str(r['الحصة'])))
+        for _d, _g, _sec, _p in combos:
             sb.table("thaghr_student_attendance").delete().eq(
-                "date", str(r['التاريخ'])
-            ).eq("student_id", str(r['رقم الطالب'])).eq("period", str(r['الحصة'])).execute()
+                "date", _d
+            ).eq("grade", _g).eq("section", _sec).eq("period", _p).execute()
 
         payload = [{
             "date": str(r['التاريخ']),
@@ -188,7 +192,7 @@ def delete_student_attendance_from_db(scope):
         st.cache_data.clear()
 
 # --- دوال سجلات المعلمين ---
-@st.cache_data(ttl=5, show_spinner=False)
+@st.cache_data(ttl=45, show_spinner=False)
 def _fetch_teacher_rows():
     sb = get_supabase()
     if sb is None:
@@ -286,7 +290,7 @@ def add_student_db(student_id, student_name, grade, section):
 def move_student_db(student_id, student_name, new_grade, new_section):
     add_student_db(student_id, student_name, new_grade, new_section)
 
-@st.cache_data(ttl=5, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def _fetch_roster_rows():
     sb = get_supabase()
     if sb is None:
@@ -333,7 +337,7 @@ def get_active_students_db():
 # =========================================================
 # إدارة المعلمين (إضافة معلم جديد وحفظه بشكل دائم)
 # =========================================================
-@st.cache_data(ttl=5, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def _fetch_custom_teachers_rows():
     sb = get_supabase()
     if sb is None:
@@ -363,7 +367,7 @@ def add_teacher_db(teacher_name, password):
         return False
 
 # --- حذف معلم (يُخفيه من القوائم مع إمكانية إعادته) — إضافي صرف ---
-@st.cache_data(ttl=5, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def _fetch_removed_teachers_rows():
     sb = get_supabase()
     if sb is None:
@@ -1245,7 +1249,7 @@ th {{ background:#0F2552; color:#FFFFFF; font-weight:700; font-size:12px; }}
 # أدوات إدارية متقدمة (إضافية بالكامل — دون المساس بالكود الأصلي)
 # جداول Supabase جديدة ببادئة thaghr_ : الهيكل (صف/فصل) + المحذوفين + جوالات التواصل
 # =========================================================
-@st.cache_data(ttl=5, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def _fetch_custom_structure_rows():
     sb = get_supabase()
     if sb is None:
@@ -1273,7 +1277,7 @@ def add_grade_section_db(grade, section=""):
         st.error(f"خطأ أثناء إضافة الصف/الفصل: {ex}")
         return False
 
-@st.cache_data(ttl=5, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def _fetch_removed_students_rows():
     sb = get_supabase()
     if sb is None:
@@ -1318,7 +1322,7 @@ def clear_removed_student_db(student_id):
     finally:
         st.cache_data.clear()
 
-@st.cache_data(ttl=5, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def _fetch_contact_rows():
     sb = get_supabase()
     if sb is None:
